@@ -13,46 +13,32 @@
 
   <script>
     const { useState, useEffect, useRef } = React;
-
-    // ===== DESIGN TOKENS =====
-    const C = {
-      ink: "#1B1633", indigo: "#5B4FE9", indigoDeep: "#3E34B8",
-      lilac: "#EEEcFD", mist: "#F7F6FE", green: "#2EB67D",
-      rose: "#E85D75", grayText: "#6B6685",
-    };
-
-    // ===== STORAGE =====
+    const C = { ink: "#1B1633", indigo: "#5B4FE9", indigoDeep: "#3E34B8", lilac: "#EEEcFD", mist: "#F7F6FE", green: "#2EB67D", rose: "#E85D75", grayText: "#6B6685" };
     const store = {
-      async get(k) {
-        const v = localStorage.getItem(k);
-        return v == null ? null : { key: k, value: v };
-      },
-      async set(k, v) {
-        localStorage.setItem(k, v);
-        return { key: k, value: v };
-      },
-      async delete(k) {
-        localStorage.removeItem(k);
-        return { key: k, deleted: true };
-      }
+      async get(k) { const v = localStorage.getItem(k); return v == null ? null : { key: k, value: v }; },
+      async set(k, v) { localStorage.setItem(k, v); return { key: k, value: v }; },
+      async delete(k) { localStorage.removeItem(k); return { key: k, deleted: true }; }
     };
-
     const AI_URL = '/.netlify/functions/claude';
-
-    // ===== TTS =====
+    
     function speak(text, rate = 1) {
       if (typeof speechSynthesis === "undefined") return;
       speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text.replace(/[❌✅]/g, ""));
-      u.lang = "en-US";
-      u.rate = rate;
+      u.lang = "en-US"; u.rate = rate;
       const vs = speechSynthesis.getVoices();
       const v = vs.find(v => v.lang === "en-US" && /female|samantha|aria/i.test(v.name)) || vs.find(v => v.lang === "en-US");
       if (v) u.voice = v;
       speechSynthesis.speak(u);
     }
 
-    // ===== DATA =====
+    function analyzeSpeech(transcript) {
+      const words = transcript.trim().split(/\s+/).filter(Boolean);
+      const fillers = (transcript.match(/\b(um+|uh+|erm+|you know|so yeah)\b/gi) || []).length;
+      const hedges = (transcript.match(/\b(maybe|just|sorry|i think|i guess|kind of|sort of|probably)\b/gi) || []).length;
+      return { words: words.length, fillers, hedges };
+    }
+
     const WEEKS = [
       { name: "Presence", desc: "Introduce yourself, small talk, speaking up early" },
       { name: "Meetings", desc: "Updates, opinions, disagreeing without apologizing" },
@@ -60,315 +46,99 @@
       { name: "Leadership", desc: "Feedback, interviews, negotiating, executive tone" },
     ];
 
-    const WARMUPS = [
-      "Strategic statistics suggest sustainable solutions.",
-      "Particularly proper preparation prevents poor performance.",
-      "Critical clients clearly criticize careless quarterly claims.",
-      "The leadership literally lengthened the lengthy legal logistics list.",
-      "Six successful CEOs sized seven simple synergy strategies.",
-      "Brand-new branding broadens broad brand boundaries.",
-      "We were wary of weary workers who weren't well aware.",
-    ];
+    const WARMUPS = ["Strategic statistics suggest sustainable solutions.", "Particularly proper preparation prevents poor performance.", "Critical clients clearly criticize careless quarterly claims.", "The leadership literally lengthened the lengthy legal logistics list.", "Six successful CEOs sized seven simple synergy strategies.", "Brand-new branding broadens broad brand boundaries.", "We were wary of weary workers who weren't well aware."];
 
-    const PV = [
-      ["bring up", "mention a topic", "I'd like to bring up the budget before we finish."],
-      ["follow up", "check on something later", "I'll follow up with the client tomorrow morning."],
-      ["set up", "arrange / organize", "Can you set up a call with the design team?"],
-      ["carry out", "perform / complete", "We carried out the survey across three markets."],
-      ["figure out", "find the answer", "Let's figure out why sales dropped in May."],
-      ["point out", "draw attention to", "She pointed out a risk nobody had noticed."],
-      ["put off", "postpone", "We had to put off the launch until Q3."],
-      ["take on", "accept work or responsibility", "I can take on the new account this quarter."],
-      ["take over", "assume control", "Maria will take over the project next month."],
-      ["run by", "ask for an opinion", "Let me run this idea by you before the meeting."],
-      ["sign off on", "give final approval", "The director signed off on the new design."],
-      ["fill in", "give missing info / substitute", "Can you fill me in on what I missed?"],
-      ["fill out", "complete a form", "Please fill out the expense report by Friday."],
-      ["hand in", "submit", "I handed in the proposal an hour early."],
-      ["hand over", "give responsibility to another", "I'm handing over my tasks before vacation."],
-      ["look into", "investigate", "We're looking into the billing issue right now."],
-      ["look over", "review quickly", "Could you look over my slides before I present?"],
-      ["go over", "review in detail", "Let's go over the numbers one more time."],
-      ["come up with", "create / invent an idea", "She came up with a brilliant cost-saving plan."],
-      ["catch up on", "do delayed work", "I spent Monday catching up on emails."],
-      ["deal with", "handle a problem", "I'll deal with the supplier complaint today."],
-      ["work out", "find a solution / succeed", "Don't worry — we'll work out the details."],
-      ["sort out", "fix / organize", "IT sorted out the server problem overnight."],
-      ["reach out", "contact someone", "Feel free to reach out if you have questions."],
-      ["get back to", "respond later", "I'll get back to you by end of day."],
-      ["cut back on", "reduce", "We're cutting back on travel costs this year."],
-      ["scale up", "grow / increase capacity", "The startup scaled up to fifty employees."],
-      ["wrap up", "finish", "Let's wrap up the meeting with action items."],
-      ["kick off", "start", "We kick off the campaign on Monday."],
-      ["lay out", "explain clearly", "He laid out the plan step by step."],
-    ];
+    const PV = [["bring up","mention a topic","I'd like to bring up the budget before we finish."],["follow up","check on something later","I'll follow up with the client tomorrow morning."],["set up","arrange / organize","Can you set up a call with the design team?"],["carry out","perform / complete","We carried out the survey across three markets."],["figure out","find the answer","Let's figure out why sales dropped in May."],["point out","draw attention to","She pointed out a risk nobody had noticed."],["put off","postpone","We had to put off the launch until Q3."],["take on","accept work","I can take on the new account this quarter."],["take over","assume control","Maria will take over the project next month."],["run by","ask for opinion","Let me run this idea by you before the meeting."],["sign off on","give approval","The director signed off on the new design."],["fill in","give missing info","Can you fill me in on what I missed?"],["fill out","complete a form","Please fill out the expense report by Friday."],["hand in","submit","I handed in the proposal an hour early."],["hand over","give responsibility","I'm handing over my tasks before vacation."],["look into","investigate","We're looking into the billing issue right now."],["look over","review quickly","Could you look over my slides before I present?"],["go over","review in detail","Let's go over the numbers one more time."],["come up with","create an idea","She came up with a brilliant cost-saving plan."],["catch up on","do delayed work","I spent Monday catching up on emails."],["deal with","handle a problem","I'll deal with the supplier complaint today."],["work out","find a solution","Don't worry — we'll work out the details."],["sort out","fix / organize","IT sorted out the server problem overnight."],["reach out","contact someone","Feel free to reach out if you have questions."],["get back to","respond later","I'll get back to you by end of day."],["cut back on","reduce","We're cutting back on travel costs this year."],["scale up","grow / increase","The startup scaled up to fifty employees."],["wrap up","finish","Let's wrap up the meeting with action items."],["kick off","start","We kick off the campaign on Monday."],["lay out","explain clearly","He laid out the plan step by step."]];
 
-    const VOCAB = [
-      ["leverage", "use to maximum advantage", "We can leverage our brand to enter new markets."],
-      ["stakeholder", "anyone affected by a project", "Update all stakeholders before the launch."],
-      ["milestone", "key progress point", "We hit the first milestone two weeks early."],
-      ["deliverable", "a promised piece of work", "The final deliverable is due on the 15th."],
-      ["benchmark", "standard to compare against", "Our response time beats the industry benchmark."],
-      ["scalable", "able to grow efficiently", "The platform is scalable to millions of users."],
-      ["bandwidth", "capacity to take on work", "I don't have bandwidth for another project."],
-      ["alignment", "agreement on direction", "We need alignment between sales and product."],
-      ["traction", "early signs of success", "The app is gaining traction with students."],
-      ["churn", "customers leaving", "Churn dropped 5 percent after the redesign."],
-      ["retention", "keeping customers or staff", "Retention is cheaper than acquisition."],
-      ["margin", "profit after costs", "Hardware has thin margins."],
-      ["overhead", "fixed running costs", "Remote work cut our overhead in half."],
-      ["revenue", "total income", "Revenue grew 20 percent year over year."],
-      ["forecast", "prediction of results", "The Q3 forecast looks conservative."],
-      ["pipeline", "upcoming deals or work", "Our sales pipeline is the strongest in years."],
-      ["quota", "required target", "She exceeded her quota three quarters straight."],
-      ["incentive", "motivating reward", "Bonuses are tied to team incentives."],
-      ["onboarding", "integrating new people", "Good onboarding cuts time to productivity."],
-      ["procurement", "purchasing process", "Procurement approved the new vendor."],
-      ["compliance", "following rules", "The report meets all compliance requirements."],
-      ["liability", "legal responsibility or risk", "Unclear contracts create liability."],
-      ["equity", "ownership share", "Early employees received equity."],
-      ["asset", "something valuable owned", "Our brand is our biggest asset."],
-      ["acquisition", "buying a company / gaining customers", "The acquisition closed in March."],
-      ["merger", "two companies combining", "The merger created the market leader."],
-      ["due diligence", "careful pre-deal research", "We did due diligence on the supplier."],
-      ["valuation", "estimated company worth", "The startup raised at a fifty million valuation."],
-      ["ROI", "return on investment", "The campaign's ROI was four to one."],
-      ["KPI", "key performance indicator", "Our main KPI is monthly active users."],
-    ];
+    const VOCAB = [["leverage","use to max advantage","We can leverage our brand to enter new markets."],["stakeholder","anyone affected","Update all stakeholders before the launch."],["milestone","key progress point","We hit the first milestone two weeks early."],["deliverable","promised piece of work","The final deliverable is due on the 15th."],["benchmark","standard to compare","Our response time beats the industry benchmark."],["scalable","able to grow efficiently","The platform is scalable to millions of users."],["bandwidth","capacity to take on work","I don't have bandwidth for another project."],["alignment","agreement on direction","We need alignment between sales and product."],["traction","early signs of success","The app is gaining traction with students."],["churn","customers leaving","Churn dropped 5 percent after the redesign."],["retention","keeping customers","Retention is cheaper than acquisition."],["margin","profit after costs","Hardware has thin margins."],["overhead","fixed running costs","Remote work cut our overhead in half."],["revenue","total income","Revenue grew 20 percent year over year."],["forecast","prediction of results","The Q3 forecast looks conservative."],["pipeline","upcoming deals or work","Our sales pipeline is the strongest in years."],["quota","required target","She exceeded her quota three quarters straight."],["incentive","motivating reward","Bonuses are tied to team incentives."],["onboarding","integrating new people","Good onboarding cuts time to productivity."],["procurement","purchasing process","Procurement approved the new vendor."],["compliance","following rules","The report meets all compliance requirements."],["liability","legal responsibility","Unclear contracts create liability."],["equity","ownership share","Early employees received equity."],["asset","something valuable","Our brand is our biggest asset."],["acquisition","buying a company","The acquisition closed in March."],["merger","companies combining","The merger created the market leader."],["due diligence","pre-deal research","We did due diligence on the supplier."],["valuation","estimated worth","The startup raised at fifty million valuation."],["ROI","return on investment","The campaign's ROI was four to one."],["KPI","key performance indicator","Our main KPI is monthly active users."]];
 
-    const POWER = [
-      [
-        { weak: "Sorry, can I just say something?", strong: "I'd like to add a point here." },
-        { weak: "I'm just the new analyst…", strong: "I'm the analyst leading this report." },
-        { weak: "This might be a dumb question, but…", strong: "Quick question:" },
-        { weak: "I kind of think maybe we could…", strong: "I suggest we…" },
-        { weak: "Hopefully that makes sense?", strong: "Happy to clarify any part of that." },
-      ],
-      [
-        { weak: "I'm not sure, but maybe we should…", strong: "My recommendation is to…" },
-        { weak: "Sorry to interrupt, but…", strong: "Before we move on — one important point." },
-        { weak: "I could be wrong, but…", strong: "Based on the data, I see it differently." },
-        { weak: "Does that make sense? Sorry if not.", strong: "What questions do you have?" },
-        { weak: "I'll try to get it done.", strong: "I'll have it to you by Thursday." },
-      ],
-      [
-        { weak: "It's probably not a big deal, but…", strong: "Here's why this matters:" },
-        { weak: "I guess we could consider…", strong: "There are two options. I recommend the first." },
-        { weak: "Maybe it's just me, but…", strong: "I've noticed a pattern worth discussing." },
-        { weak: "If it's not too much trouble…", strong: "I need this by Friday to stay on track." },
-        { weak: "I think it might possibly work.", strong: "This will work. Here's the evidence." },
-      ],
-      [
-        { weak: "You did it wrong.", strong: "Let's look at a stronger approach for next time." },
-        { weak: "I was hoping for maybe a raise?", strong: "Based on my results, I'm asking for X." },
-        { weak: "I'm not really a leader type…", strong: "I led the team through three launches." },
-        { weak: "Whatever works for everyone…", strong: "Here's my proposal — push back if needed." },
-        { weak: "Sorry for the long email.", strong: "Summary first, details below." },
-      ],
-    ];
+    const POWER = [[{weak:"Sorry, can I just say something?",strong:"I'd like to add a point here."},{weak:"I'm just the new analyst…",strong:"I'm the analyst leading this report."},{weak:"This might be a dumb question, but…",strong:"Quick question:"},{weak:"I kind of think maybe we could…",strong:"I suggest we…"},{weak:"Hopefully that makes sense?",strong:"Happy to clarify any part of that."}],[{weak:"I'm not sure, but maybe we should…",strong:"My recommendation is to…"},{weak:"Sorry to interrupt, but…",strong:"Before we move on — one important point."},{weak:"I could be wrong, but…",strong:"Based on the data, I see it differently."},{weak:"Does that make sense? Sorry if not.",strong:"What questions do you have?"},{weak:"I'll try to get it done.",strong:"I'll have it to you by Thursday."}],[{weak:"It's probably not a big deal, but…",strong:"Here's why this matters:"},{weak:"I guess we could consider…",strong:"There are two options. I recommend the first."},{weak:"Maybe it's just me, but…",strong:"I've noticed a pattern worth discussing."},{weak:"If it's not too much trouble…",strong:"I need this by Friday to stay on track."},{weak:"I think it might possibly work.",strong:"This will work. Here's the evidence."}],[{weak:"You did it wrong.",strong:"Let's look at a stronger approach for next time."},{weak:"I was hoping for maybe a raise?",strong:"Based on my results, I'm asking for X."},{weak:"I'm not really a leader type…",strong:"I led the team through three launches."},{weak:"Whatever works for everyone…",strong:"Here's my proposal — push back if needed."},{weak:"Sorry for the long email.",strong:"Summary first, details below."}]];
 
-    const QUESTIONS = [
-      ["Introduce yourself in two sentences — role, and what you're great at.",
-       "What's one thing you accomplished this month?",
-       "A colleague asks 'How's your project going?' — answer.",
-       "Describe your job to someone outside your industry.",
-       "Someone senior joins the elevator. Make small talk.",
-       "What do you enjoy most about your work?",
-       "What's a skill you're building right now, and why?"],
-      ["Give a 30-second status update on any project.",
-       "Your manager asks: 'Any blockers?' — answer honestly.",
-       "Disagree with this: 'We should cut the budget by half.'",
-       "Ask a clarifying question about a vague task you were given.",
-       "Summarize a meeting's outcome in three sentences.",
-       "A teammate's idea has a flaw. Point it out kindly but clearly.",
-       "You missed a deadline. Explain and propose a fix."],
-      ["Pitch an idea you believe in — 45 seconds.",
-       "A client says 'It's too expensive.' Respond.",
-       "Convince a skeptic that your project deserves priority.",
-       "Open a presentation with a strong first line — no 'um, so, today I…'",
-       "Someone challenges your data in front of others. Respond calmly.",
-       "Explain a complex idea using one simple analogy.",
-       "Close a meeting with clear next steps and owners."],
-      ["Answer: 'Tell me about yourself' — interview version.",
-       "Give a junior colleague constructive feedback on a late report.",
-       "Answer: 'What's your greatest strength?' with a real example.",
-       "Ask for a raise. State your case in under a minute.",
-       "Answer: 'Why should we hire you?'",
-       "Delegate a task clearly: what, why, by when.",
-       "Describe your leadership style with one concrete story."],
-    ];
+    const QUESTIONS = [["Introduce yourself in two sentences — role and what you're great at.","What's one thing you accomplished this month?","A colleague asks 'How's your project going?' — answer.","Describe your job to someone outside your industry.","Someone senior joins the elevator. Make small talk.","What do you enjoy most about your work?","What's a skill you're building right now?"],["Give a 30-second status update on any project.","Your manager asks: 'Any blockers?' — answer honestly.","Disagree with this: 'We should cut the budget by half.'","Ask a clarifying question about a vague task.","Summarize a meeting's outcome in three sentences.","A teammate's idea has a flaw. Point it out kindly.","You missed a deadline. Explain and propose a fix."],["Pitch an idea you believe in — 45 seconds.","A client says 'It's too expensive.' Respond.","Convince a skeptic that your project deserves priority.","Open a presentation with a strong first line.","Someone challenges your data in front of others.","Explain a complex idea using one simple analogy.","Close a meeting with clear next steps and owners."],["Answer: 'Tell me about yourself' — interview version.","Give a junior colleague constructive feedback.","Answer: 'What's your greatest strength?' with an example.","Ask for a raise. State your case in under a minute.","Answer: 'Why should we hire you?'","Delegate a task clearly: what, why, by when.","Describe your leadership style with one concrete story."]];
 
-    const TOPICS = [
-      ["Walk through your morning routine as if onboarding a new assistant.",
-       "Describe your dream role five years from now — speak as if it's certain.",
-       "Tell the story of how you got into your field.",
-       "Describe your company to an investor in plain language.",
-       "Talk about a time you felt proud at work.",
-       "Describe your typical workday to a curious student.",
-       "What would you change about your industry, and why?"],
-      ["Narrate your last team meeting — what went well, what didn't.",
-       "Explain a current project: goal, status, next step.",
-       "Describe the most useful meeting you've ever attended.",
-       "Talk about a disagreement at work and how it resolved.",
-       "Explain how decisions get made on your team.",
-       "Describe a process at work that should be simpler.",
-       "Talk about giving an update when the news isn't good."],
-      ["Pitch your favorite product as if you invented it.",
-       "Tell a story about changing someone's mind.",
-       "Present one slide that exists only in your head: 'Why this matters.'",
-       "Describe a negotiation you've experienced — any side.",
-       "Sell your city as the next big business hub.",
-       "Explain a trend in your industry and your take on it.",
-       "Persuade your past self to make one different career choice."],
-      ["Describe the best manager you've ever had — what made them great.",
-       "Mock interview: your career story in 90 seconds.",
-       "Talk about a failure and what it taught you — no apologizing.",
-       "Describe how you'd run your first team meeting as a new manager.",
-       "What does 'executive presence' mean to you?",
-       "Give a 1-minute toast at your own promotion party.",
-       "Day 28: tell future-you how speaking feels now vs. Day 1."],
-    ];
+    const TOPICS = [["Walk through your morning routine as if onboarding someone.","Describe your dream role five years from now.","Tell the story of how you got into your field.","Describe your company to an investor in plain language.","Talk about a time you felt proud at work.","Describe your typical workday to a curious student.","What would you change about your industry, and why?"],["Narrate your last team meeting — what went well, what didn't.","Explain a current project: goal, status, next step.","Describe the most useful meeting you've ever attended.","Talk about a disagreement at work and how it resolved.","Explain how decisions get made on your team.","Describe a process at work that should be simpler.","Talk about giving an update when the news isn't good."],["Pitch your favorite product as if you invented it.","Tell a story about changing someone's mind.","Present one slide that exists only in your head: 'Why this matters.'","Describe a negotiation you've experienced.","Sell your city as the next big business hub.","Explain a trend in your industry and your take on it.","Persuade your past self to make one different career choice."],["Describe the best manager you've ever had — what made them great.","Mock interview: your career story in 90 seconds.","Talk about a failure and what it taught you.","Describe how you'd run your first team meeting as a new manager.","What does 'executive presence' mean to you?","Give a 1-minute toast at your own promotion party.","Day 28: tell future-you how speaking feels now vs. Day 1."]];
 
-    // ===== COMPONENTS =====
+    const SKILLS = [{name:"Negotiation",emoji:"🤝",frame:"Anchor high → justify with data → trade, don't concede.",phrases:["Based on market data, I'm starting at this number.","If you can move on price, we can move on timeline.","Help me understand the constraint on your side.","That doesn't work for me — here's what does.","Let's park price for a moment and align on scope.","I'm prepared to walk away if we can't reach that.","What would make this a win-win for both of us?","Let me take this back and confirm by Friday."]},{name:"Presentation",emoji:"📊",frame:"Hook → three points → call to action. Never start with 'um, so, today I…'",phrases:["Let me start with the number that matters most.","There are three things you need to know.","So what does this mean for us?","Let's zoom out for a second.","I'll pause here — what questions do you have?","Great question — the short answer is yes.","To recap: one, two, three.","Here's what I need from this room today."]},{name:"Small talk",emoji:"🥂",frame:"Observe → relate → ask an open question. Exit warmly with a next step.",phrases:["How's your week shaping up?","I heard your team just shipped the new release — congrats!","What are you working on these days?","I don't think we've met — I'm leading the analytics side.","How did you get into this field?","What did you think of the keynote?","Any plans for the long weekend?","It was great catching up — let's grab coffee soon."]}];
+
+    const SCENARIOS = [{id:"salary",emoji:"💰",title:"Salary negotiation",desc:"Your manager is hesitant. Make your case.",open:"So… you wanted to talk about compensation? I'll be honest — budgets are tight this year. What did you have in mind?"},{id:"price",emoji:"🧾",title:"Client: 'Too expensive'",desc:"Defend your price without caving.",open:"I'll be straight with you — we love the proposal, but the price is 30% above our budget. Can you do something about that?"},{id:"interview",emoji:"🎤",title:"Job interview",desc:"Senior role. Sell yourself.",open:"Thanks for coming in. I've read your CV — impressive. Let's start simple: tell me about yourself."},{id:"network",emoji:"🥂",title:"Networking event",desc:"Conference small talk with a stranger.",open:"Quite a crowd today, isn't it? I don't think we've met — I'm Dana, I run partnerships at a fintech startup."},{id:"exec",emoji:"📈",title:"Exec Q&A",desc:"A skeptical VP grills your proposal.",open:"You have five minutes. I've seen ten proposals like this fail. Why is yours different?"},{id:"deadline",emoji:"😬",title:"Impossible deadline",desc:"Push back without saying a flat no.",open:"I need the full report by Friday. I know it's tight, but the board meets Monday. You can make that happen, right?"}];
+
     function Waveform({ active, color = C.indigo }) {
-      return React.createElement("div", {
-        style: {
-          display: "flex", alignItems: "center", justifyContent: "center",
-          gap: 3, height: 56
-        }
-      },
-        Array.from({ length: 24 }).map((_, i) =>
-          React.createElement("div", {
-            key: i,
-            style: {
-              width: 4, borderRadius: 4, background: color, minHeight: 8,
-              height: active ? undefined : 8,
-              animation: active ? `wv .9s ease-in-out ${i * 0.06}s infinite alternate` : "none",
-              opacity: active ? 1 : 0.35,
-            }
-          })
-        ),
+      return React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 3, height: 56 } },
+        Array.from({ length: 24 }).map((_, i) => React.createElement("div", { key: i, style: { width: 4, borderRadius: 4, background: color, minHeight: 8, height: active ? undefined : 8, animation: active ? `wv .9s ease-in-out ${i * 0.06}s infinite alternate` : "none", opacity: active ? 1 : 0.35 } })),
         React.createElement("style", null, `@keyframes wv{from{height:8px}to{height:48px}}`)
       );
     }
 
     function Pill({ children, color = C.indigoDeep, bg = C.lilac }) {
-      return React.createElement("span", {
-        style: {
-          fontSize: 12, fontWeight: 600, color, background: bg,
-          borderRadius: 999, padding: "5px 12px"
-        }
-      }, children);
+      return React.createElement("span", { style: { fontSize: 12, fontWeight: 600, color, background: bg, borderRadius: 999, padding: "5px 12px" } }, children);
     }
 
     function Button({ children, onClick, secondary, disabled, style }) {
-      return React.createElement("button", {
-        onClick, disabled,
-        style: {
-          width: "100%", border: "none", cursor: disabled ? "default" : "pointer",
-          background: secondary ? "white" : `linear-gradient(135deg, ${C.indigo}, ${C.indigoDeep})`,
-          color: secondary ? C.indigoDeep : "white",
-          boxShadow: secondary ? `inset 0 0 0 2px ${C.lilac}` : "0 8px 24px rgba(91,79,233,.35)",
-          borderRadius: 16, padding: "16px 20px", fontSize: 17, fontWeight: 700,
-          opacity: disabled ? 0.5 : 1, ...style
-        }
-      }, children);
+      return React.createElement("button", { onClick, disabled, style: { width: "100%", border: "none", cursor: disabled ? "default" : "pointer", background: secondary ? "white" : `linear-gradient(135deg, ${C.indigo}, ${C.indigoDeep})`, color: secondary ? C.indigoDeep : "white", boxShadow: secondary ? `inset 0 0 0 2px ${C.lilac}` : "0 8px 24px rgba(91,79,233,.35)", borderRadius: 16, padding: "16px 20px", fontSize: 17, fontWeight: 700, opacity: disabled ? 0.5 : 1, ...style } }, children);
     }
 
     function ListenBtn({ text, rate = 1, small }) {
-      return React.createElement("button", {
-        onClick: () => speak(text, rate),
-        style: {
-          border: `1.5px solid ${C.lilac}`, background: "white", color: C.indigoDeep,
-          borderRadius: 99, padding: small ? "4px 10px" : "7px 14px",
-          fontSize: small ? 12 : 13.5, fontWeight: 700, cursor: "pointer",
-          fontFamily: "system-ui, sans-serif", whiteSpace: "nowrap"
-        }
-      }, rate < 1 ? "🔊 Slow" : "🔊 Listen");
+      return React.createElement("button", { onClick: () => speak(text, rate), style: { border: `1.5px solid ${C.lilac}`, background: "white", color: C.indigoDeep, borderRadius: 99, padding: small ? "4px 10px" : "7px 14px", fontSize: small ? 12 : 13.5, fontWeight: 700, cursor: "pointer", fontFamily: "system-ui" } }, rate < 1 ? "🔊 Slow" : "🔊 Listen");
     }
 
     function H({ size = 28, children, style }) {
-      return React.createElement("h2", {
-        style: {
-          fontFamily: "'Bricolage Grotesque', 'Sora', system-ui, sans-serif",
-          fontWeight: 800, fontSize: size, color: C.ink, letterSpacing: -0.5,
-          margin: 0, lineHeight: 1.15, ...style
-        }
-      }, children);
+      return React.createElement("h2", { style: { fontFamily: "'Bricolage Grotesque', system-ui", fontWeight: 800, fontSize: size, color: C.ink, letterSpacing: -0.5, margin: 0, lineHeight: 1.15, ...style } }, children);
     }
 
-    // ===== SCREENS =====
     function Landing({ onStart }) {
       return React.createElement("div", { style: { textAlign: "center", paddingTop: 32 } },
-        React.createElement("div", {
-          style: {
-            fontFamily: "'Bricolage Grotesque', 'Sora', system-ui, sans-serif",
-            fontWeight: 800, fontSize: 22, color: C.indigoDeep, letterSpacing: 1
-          }
-        }, "SAYSO ", React.createElement("span", { style: { fontSize: 12, color: C.grayText, letterSpacing: 0 } }, "BUSINESS")),
-        React.createElement("div", {
-          style: { display: "flex", gap: 8, justifyContent: "center", marginTop: 18, flexWrap: "wrap" }
-        },
+        React.createElement("div", { style: { fontFamily: "'Bricolage Grotesque', system-ui", fontWeight: 800, fontSize: 22, color: C.indigoDeep, letterSpacing: 1 } }, "SAYSO ", React.createElement("span", { style: { fontSize: 12, color: C.grayText } }, "BUSINESS")),
+        React.createElement("div", { style: { display: "flex", gap: 8, justifyContent: "center", marginTop: 18, flexWrap: "wrap" } },
           React.createElement(Pill, {}, "🎯 28 days"),
           React.createElement(Pill, {}, "🔊 Voice coach"),
           React.createElement(Pill, {}, "💬 AI partner")
         ),
-        React.createElement(H, { size: 37, style: { marginTop: 26 } },
-          "Speak like the most ", React.createElement("span", { style: { color: C.indigo } }, "confident person"), " in the meeting."
-        ),
-        React.createElement("p", {
-          style: { color: C.grayText, fontSize: 16.5, lineHeight: 1.55, margin: "16px auto 0", maxWidth: 420 }
-        }, "Daily speaking drills, 10 phrasal verbs/day, business vocabulary, AI coach for role-play, and real speech feedback."),
+        React.createElement(H, { size: 37, style: { marginTop: 26 } }, "Speak like the most ", React.createElement("span", { style: { color: C.indigo } }, "confident person"), " in the meeting."),
+        React.createElement("p", { style: { color: C.grayText, fontSize: 16.5, lineHeight: 1.55, margin: "16px auto 0", maxWidth: 420 } }, "10 phrasal verbs + 3 vocab + power phrases + AI coach + role-play scenarios + skill kits. 15 min daily for 28 days."),
         React.createElement("div", { style: { margin: "24px 0 6px" } }, React.createElement(Waveform, { active: true })),
         React.createElement("p", { style: { fontSize: 13, color: C.grayText, marginBottom: 22 } }, "Your voice, getting steadier every day"),
-        React.createElement(Button, { onClick: () => onStart() }, "Build my plan →"),
-        React.createElement("p", { style: { fontSize: 12, color: C.grayText, marginTop: 14 } }, "No account needed · starts today")
+        React.createElement(Button, { onClick: () => onStart() }, "Start Day 1 →"),
+        React.createElement("p", { style: { fontSize: 12, color: C.grayText, marginTop: 14 } }, "No account needed · full app offline · saves progress")
       );
     }
 
-    function Dashboard({ day, onTrain }) {
+    function Dashboard({ day, completed, streak, doneToday, onTrain, onReset }) {
       const week = WEEKS[Math.min(Math.floor((day - 1) / 7), 3)];
       return React.createElement("div", { style: { paddingTop: 24 } },
-        React.createElement("div", {
-          style: { display: "flex", justifyContent: "space-between", alignItems: "center" }
-        },
-          React.createElement("div", {
-            style: {
-              fontFamily: "'Bricolage Grotesque', 'Sora', system-ui, sans-serif",
-              fontWeight: 800, fontSize: 19, color: C.indigoDeep, letterSpacing: 1
-            }
-          }, "SAYSO"),
-          React.createElement(Pill, {}, "🔥 ", day, "-day challenge")
+        React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
+          React.createElement("div", { style: { fontFamily: "'Bricolage Grotesque', system-ui", fontWeight: 800, fontSize: 19, color: C.indigoDeep, letterSpacing: 1 } }, "SAYSO"),
+          React.createElement(Pill, {}, "🔥 ", streak, "-day streak")
         ),
         React.createElement(H, { size: 28, style: { marginTop: 20 } }, "Day ", day, " of 28"),
-        React.createElement("p", {
-          style: { color: C.grayText, fontSize: 15, marginTop: 6 }
-        }, "This week: ", React.createElement("strong", { style: { color: C.ink } }, week.name), " — ", week.desc.toLowerCase()),
-        React.createElement("div", { style: { marginTop: 18, display: "flex", flexDirection: "column", gap: 10 } },
-          React.createElement(Button, { onClick: () => onTrain() }, "Start Day ", day, " 🎙️")
+        React.createElement("p", { style: { color: C.grayText, fontSize: 15, marginTop: 6 } }, "This week: ", React.createElement("strong", { style: { color: C.ink } }, week.name), " — ", week.desc.toLowerCase()),
+        doneToday && React.createElement("div", { style: { background: "#EAF8F1", border: `2px solid ${C.green}`, borderRadius: 14, padding: "12px 16px", marginTop: 14, fontSize: 14, color: "#1B6B49", fontWeight: 600 } }, "✅ Today's session is done. Day ", Math.min(day + 1, 28), " unlocks tomorrow."),
+        React.createElement("div", { style: { marginTop: 16, display: "flex", flexDirection: "column", gap: 10 } },
+          doneToday ? React.createElement(Button, { secondary: true, onClick: onTrain }, "🔁 Extra practice (doesn't count twice)") : React.createElement(Button, { onClick: onTrain }, "Start Day ", day, " 🎙️")
         ),
-        React.createElement("p", {
-          style: { fontSize: 12.5, color: C.grayText, marginTop: 24, textAlign: "center" }
-        }, "10 phrasal verbs + 3 vocab words daily = 140 verbs & 84 words by Day 28 ☕")
+        React.createElement("h3", { style: { fontFamily: "'Bricolage Grotesque', system-ui", fontWeight: 700, fontSize: 16, color: C.ink, margin: "26px 0 12px" } }, "Your challenge"),
+        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 8 } },
+          Array.from({ length: 28 }).map((_, i) => {
+            const d = i + 1, isDone = completed.includes(d), isToday = d === day && !isDone;
+            return React.createElement("div", { key: d, style: { aspectRatio: "1", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, background: isDone ? C.indigo : isToday ? C.lilac : "white", color: isDone ? "white" : isToday ? C.indigoDeep : "#B9B5CF", border: `2px solid ${isDone || isToday ? C.indigo : "#EDEBF8"}` } }, isDone ? "✓" : d);
+          })
+        ),
+        React.createElement("p", { style: { fontSize: 12.5, color: C.grayText, marginTop: 16, textAlign: "center" } }, "10 phrasal verbs + 3 vocab + power phrases daily = 140 verbs & 84 words by Day 28 ☕"),
+        React.createElement("p", { style: { textAlign: "center", marginTop: 8 } }, React.createElement("button", { onClick: onReset, style: { border: "none", background: "none", color: "#B9B5CF", fontSize: 12, cursor: "pointer", textDecoration: "underline" } }, "Reset my plan & start over"))
       );
     }
 
     function Session({ day, onNext }) {
-      const w = Math.min(Math.floor((day - 1) / 7), 3);
-      const d = (day - 1) % 7;
-      const [exIdx, setExIdx] = useState(0);
-      const [left, setLeft] = useState(90);
-      const [running, setRunning] = useState(false);
+      const w = Math.min(Math.floor((day - 1) / 7), 3), d = (day - 1) % 7;
+      const [exIdx, setExIdx] = useState(0), [left, setLeft] = useState(90), [running, setRunning] = useState(false), [typed, setTyped] = useState("");
+      const [feedback, setFeedback] = useState(null), [feedbackLoading, setFeedbackLoading] = useState(false);
       const done = left === 0;
 
-      useEffect(() => {
-        if (!running || left === 0) return;
-        const t = setTimeout(() => setLeft(left - 1), 1000);
-        return () => clearTimeout(t);
-      }, [running, left]);
+      useEffect(() => { if (!running || left === 0) return; const t = setTimeout(() => setLeft(left - 1), 1000); return () => clearTimeout(t); }, [running, left]);
 
       const exercises = [
         { title: "Warm-up", content: WARMUPS[(day - 1) % WARMUPS.length], type: "warmup" },
+        { title: "Phrasal verbs", items: PV.slice(0, 10), type: "phrasal" },
+        { title: "Business vocab", items: VOCAB.slice(0, 3), type: "vocab" },
         { title: "Power phrases", content: POWER[w], type: "power" },
         { title: "Pause killer", content: QUESTIONS[w][d], type: "pause" },
         { title: "Free talk", content: TOPICS[w][d], type: "free" },
@@ -377,52 +147,65 @@
       const ex = exercises[exIdx];
       const mm = Math.floor(left / 60), ss = String(left % 60).padStart(2, "0");
 
+      async function getFeedback() {
+        if (!typed.trim()) return;
+        setFeedbackLoading(true);
+        try {
+          const res = await fetch(AI_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 500, messages: [{ role: "user", content: `Speaking exercise: "${ex.content || (Array.isArray(ex.content) ? "power phrases" : "")}". She said: "${typed.trim()}". Reply with: ✨ Stronger version: [rewrite]. ✅ What worked: [one thing]. 🎯 Fix next: [1-2 tips]. Keep it under 100 words.` }] }) });
+          const data = await res.json();
+          const text = data.content?.[0]?.text || "No feedback";
+          setFeedback(text);
+        } catch {
+          setFeedback("Connection issue. Try again.");
+        }
+        setFeedbackLoading(false);
+      }
+
       return React.createElement("div", { style: { paddingTop: 20 } },
         React.createElement(H, { size: 26, style: { marginTop: 14 } }, ex.title),
-        React.createElement("div", {
-          style: {
-            background: "white", border: `2px solid ${C.lilac}`, borderRadius: 20,
-            padding: "20px 18px", marginTop: 16, textAlign: "center"
-          }
-        },
-          Array.isArray(ex.content) ? ex.content.map((p, i) =>
-            React.createElement("div", { key: i, style: { padding: "9px 0", borderBottom: i < ex.content.length - 1 ? `1px solid ${C.mist}` : "none" } },
+        React.createElement("div", { style: { background: "white", border: `2px solid ${C.lilac}`, borderRadius: 20, padding: "20px 18px", marginTop: 16, textAlign: "center" } },
+          ex.items ? React.createElement("div", { style: { textAlign: "left", maxHeight: 300, overflowY: "auto" } },
+            ex.items.map((it, i) => React.createElement("div", { key: i, style: { padding: "9px 0", borderBottom: i < ex.items.length - 1 ? `1px solid ${C.mist}` : "none" } },
+              React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 } },
+                React.createElement("span", { style: { fontFamily: "'Bricolage Grotesque', system-ui", fontWeight: 800, fontSize: 17, color: C.indigoDeep } }, it[0]),
+                React.createElement("div", { style: { display: "flex", gap: 6 } }, React.createElement(ListenBtn, { text: it[2], small: true }), React.createElement(ListenBtn, { text: it[2], rate: 0.75, small: true }))
+              ),
+              React.createElement("div", { style: { fontSize: 12.5, color: C.grayText, marginTop: 2 } }, "= ", it[1]),
+              React.createElement("div", { style: { fontSize: 14.5, color: C.ink, marginTop: 3, fontStyle: "italic" } }, '"', it[2], '"')
+            ))
+          ) : Array.isArray(ex.content) ? React.createElement("div", { style: { textAlign: "left" } },
+            ex.content.map((p, i) => React.createElement("div", { key: i, style: { padding: "9px 0", borderBottom: i < ex.content.length - 1 ? `1px solid ${C.mist}` : "none" } },
               React.createElement("div", { style: { fontSize: 14, color: C.rose, textDecoration: "line-through" } }, "❌ ", p.weak),
               React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 3, gap: 8 } },
                 React.createElement("span", { style: { fontSize: 15.5, color: C.ink, fontWeight: 700 } }, "✅ ", p.strong),
                 React.createElement(ListenBtn, { text: p.strong, small: true })
               )
-            )
-          ) : React.createElement("p", {
-            style: { fontFamily: "'Bricolage Grotesque', 'Sora', system-ui, sans-serif", fontSize: 20, fontWeight: 700, color: C.ink, margin: 0 }
-          }, ex.content),
+            ))
+          ) : React.createElement("p", { style: { fontFamily: "'Bricolage Grotesque', system-ui", fontSize: 20, fontWeight: 700, color: C.ink, margin: 0 } }, ex.content),
           React.createElement("div", { style: { marginTop: 14 } }, React.createElement(Waveform, { active: running && !done, color: done ? C.green : C.indigo })),
-          React.createElement("div", {
-            style: {
-              fontFamily: "'Bricolage Grotesque', 'Sora', system-ui, sans-serif",
-              fontWeight: 800, fontSize: 36, color: done ? C.green : C.ink, marginTop: 2
-            }
-          }, done ? "Done! 🎉" : `${mm}:${ss}`)
+          React.createElement("div", { style: { fontFamily: "'Bricolage Grotesque', system-ui", fontWeight: 800, fontSize: 36, color: done ? C.green : C.ink, marginTop: 2 } }, done ? "Done! 🎉" : `${mm}:${ss}`)
         ),
-        React.createElement("p", {
-          style: { fontSize: 13, color: C.grayText, marginTop: 12, background: C.mist, padding: "11px 14px", borderRadius: 12 }
-        }, "💡 Speak out loud. Type what you said to get AI feedback."),
-        React.createElement("div", { style: { marginTop: 16, display: "flex", flexDirection: "column", gap: 10 } },
-          !done && React.createElement(Button, { onClick: () => setRunning(!running), secondary: running },
-            running ? "Pause ⏸️" : "Start speaking 🎙️"
+        done && (ex.type === "pause" || ex.type === "free") && React.createElement("div", { style: { background: "white", border: `2px solid ${C.indigo}`, borderRadius: 18, padding: "16px 18px", marginTop: 14 } },
+          React.createElement("div", { style: { fontWeight: 800, color: C.indigoDeep, fontFamily: "'Bricolage Grotesque', system-ui", fontSize: 15.5 } }, "✍️ Type what you said → get AI feedback"),
+          React.createElement("textarea", { value: typed, onChange: e => setTyped(e.target.value), placeholder: "Type what you said...", rows: 3, style: { width: "100%", boxSizing: "border-box", border: `2px solid ${C.lilac}`, borderRadius: 12, padding: "10px 12px", fontSize: 14.5, fontFamily: "system-ui", marginTop: 10, resize: "vertical", background: C.mist } }),
+          typed.trim() && React.createElement("div", { style: { display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" } },
+            React.createElement(Pill, {}, analyzeSpeech(typed).words, " words"),
+            React.createElement(Pill, { bg: analyzeSpeech(typed).hedges >= 2 ? "#FDECEF" : C.lilac, color: analyzeSpeech(typed).hedges >= 2 ? C.rose : C.indigoDeep }, "hedges: ", analyzeSpeech(typed).hedges),
+            React.createElement(Pill, { bg: analyzeSpeech(typed).fillers >= 2 ? "#FDECEF" : C.lilac, color: analyzeSpeech(typed).fillers >= 2 ? C.rose : C.indigoDeep }, "fillers: ", analyzeSpeech(typed).fillers)
           ),
-          (done || left < 90) && React.createElement(Button, {
-            onClick: () => {
-              if (exIdx + 1 < exercises.length) {
-                setExIdx(exIdx + 1);
-                setLeft(90);
-                setRunning(false);
-              } else {
-                onNext();
-              }
-            },
-            secondary: !done
-          }, exIdx + 1 === exercises.length ? "Finish session ✅" : "Next exercise →")
+          React.createElement(Button, { onClick: getFeedback, disabled: !typed.trim() || feedbackLoading, style: { marginTop: 10, fontSize: 15 } }, feedbackLoading ? "Coach is reading…" : "Get coach feedback 🎓"),
+          feedback && React.createElement("div", { style: { marginTop: 12, borderTop: `1px solid ${C.mist}`, paddingTop: 10 } },
+            React.createElement("p", { style: { fontSize: 14, color: C.ink, lineHeight: 1.6, whiteSpace: "pre-wrap", margin: 0 } }, feedback),
+            React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 10 } },
+              React.createElement(ListenBtn, { text: feedback.split("✅")[0].replace("✨ Stronger version:", ""), small: true }),
+              React.createElement("span", { style: { fontSize: 12, color: C.grayText, alignSelf: "center" } }, "← hear the stronger version, then say it 2×")
+            )
+          )
+        ),
+        React.createElement("p", { style: { fontSize: 13, color: C.grayText, marginTop: 12, background: C.mist, padding: "11px 14px", borderRadius: 12 } }, "💡 Speak out loud. Type what you said to get AI feedback."),
+        React.createElement("div", { style: { marginTop: 16, display: "flex", flexDirection: "column", gap: 10 } },
+          !done && React.createElement(Button, { onClick: () => setRunning(!running), secondary: running }, running ? "Pause ⏸️" : "Start speaking 🎙️"),
+          (done || left < 90) && React.createElement(Button, { onClick: () => { if (exIdx + 1 < exercises.length) { setExIdx(exIdx + 1); setLeft(90); setRunning(false); setTyped(""); setFeedback(null); } else { onNext(); } }, secondary: !done }, exIdx + 1 === exercises.length ? "Finish session ✅" : "Next exercise →")
         )
       );
     }
@@ -431,27 +214,28 @@
       return React.createElement("div", { style: { textAlign: "center", paddingTop: 70 } },
         React.createElement("div", { style: { fontSize: 64 } }, "🏆"),
         React.createElement(H, { size: 32, style: { marginTop: 12 } }, "Day ", day, " complete"),
-        React.createElement("p", {
-          style: { color: C.grayText, fontSize: 16, marginTop: 10, lineHeight: 1.55 }
-        }, "Saved! ✅ Day ", Math.min(day + 1, 28), " unlocks tomorrow."),
+        React.createElement("p", { style: { color: C.grayText, fontSize: 16, marginTop: 10, lineHeight: 1.55 } }, "Saved! ✅ Day ", Math.min(day + 1, 28), " unlocks tomorrow."),
         React.createElement("div", { style: { marginTop: 20 } }, React.createElement(Waveform, { active: true, color: C.green })),
-        React.createElement("div", { style: { marginTop: 24 } },
-          React.createElement(Button, { onClick: onHome }, "Back to my plan")
-        )
+        React.createElement("div", { style: { marginTop: 24 } }, React.createElement(Button, { onClick: onHome }, "Back to my plan"))
       );
     }
 
-    // ===== MAIN APP =====
     function App() {
-      const [screen, setScreen] = useState("boot");
-      const [day, setDay] = useState(1);
+      const [screen, setScreen] = useState("boot"), [day, setDay] = useState(1), [completed, setCompleted] = useState([]), [streak, setStreak] = useState(0);
+      const today = new Date().toISOString().slice(0, 10);
+      const [lastDone, setLastDone] = useState(null);
+      const doneToday = lastDone === today;
 
       useEffect(() => {
         (async () => {
           try {
-            const r = await store.get("sayso-day");
-            if (r && r.value) {
-              setDay(parseInt(r.value));
+            const s = await store.get("sayso-state");
+            if (s && s.value) {
+              const state = JSON.parse(s.value);
+              setDay(state.day || 1);
+              setCompleted(state.completed || []);
+              setStreak(state.streak || 0);
+              setLastDone(state.lastDone || null);
               setScreen("dashboard");
               return;
             }
@@ -460,47 +244,51 @@
         })();
       }, []);
 
-      return React.createElement("div", {
-        style: {
-          minHeight: "100vh",
-          background: `linear-gradient(180deg, ${C.mist} 0%, #FDFCFF 60%)`,
-          fontFamily: "system-ui, sans-serif"
+      async function persist(state) {
+        try { await store.set("sayso-state", JSON.stringify(state)); } catch {}
+      }
+
+      function startDay() {
+        persist({ day: 1, completed: [], streak: 0, lastDone: null });
+        setDay(1);
+        setCompleted([]);
+        setStreak(0);
+        setLastDone(null);
+        setScreen("session");
+      }
+
+      function finishSession() {
+        if (!doneToday) {
+          const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+          const newStreak = lastDone === yesterday ? streak + 1 : 1;
+          const nextDay = Math.min(day + 1, 28);
+          const newCompleted = [...completed, day];
+          setCompleted(newCompleted);
+          setStreak(newStreak);
+          setLastDone(today);
+          setDay(nextDay);
+          persist({ day: nextDay, completed: newCompleted, streak: newStreak, lastDone: today });
         }
-      },
-        React.createElement("style", null, `
-          @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&family=Inter:wght@400;600;700&display=swap');
-          body { margin: 0; }
-          button { font-family: inherit; }
-        `),
+        setScreen("done");
+      }
+
+      function resetAll() {
+        store.delete("sayso-state");
+        setDay(1);
+        setCompleted([]);
+        setStreak(0);
+        setLastDone(null);
+        setScreen("landing");
+      }
+
+      return React.createElement("div", { style: { minHeight: "100vh", background: `linear-gradient(180deg, ${C.mist} 0%, #FDFCFF 60%)`, fontFamily: "system-ui, sans-serif" } },
+        React.createElement("style", null, `@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&family=Inter:wght@400;600;700&display=swap'); body { margin: 0; } button { font-family: inherit; }`),
         React.createElement("div", { style: { maxWidth: 480, margin: "0 auto", padding: "12px 20px 40px" } },
-          screen === "boot" && React.createElement("div", { style: { textAlign: "center", paddingTop: 120 } },
-            React.createElement(Waveform, { active: true }),
-            React.createElement("p", { style: { color: C.grayText, fontSize: 14, marginTop: 12 } }, "Loading your progress…")
-          ),
-          screen === "landing" && React.createElement(Landing, {
-            onStart: async () => {
-              await store.set("sayso-day", "1");
-              setDay(1);
-              setScreen("dashboard");
-            }
-          }),
-          screen === "dashboard" && React.createElement(Dashboard, {
-            day,
-            onTrain: () => setScreen("session")
-          }),
-          screen === "session" && React.createElement(Session, {
-            day,
-            onNext: async () => {
-              const nextDay = Math.min(day + 1, 28);
-              await store.set("sayso-day", nextDay.toString());
-              setDay(nextDay);
-              setScreen("done");
-            }
-          }),
-          screen === "done" && React.createElement(SessionDone, {
-            day,
-            onHome: () => setScreen("dashboard")
-          })
+          screen === "boot" && React.createElement("div", { style: { textAlign: "center", paddingTop: 120 } }, React.createElement(Waveform, { active: true }), React.createElement("p", { style: { color: C.grayText, fontSize: 14, marginTop: 12 } }, "Loading your progress…")),
+          screen === "landing" && React.createElement(Landing, { onStart: startDay }),
+          screen === "dashboard" && React.createElement(Dashboard, { day, completed, streak, doneToday, onTrain: () => setScreen("session"), onReset: resetAll }),
+          screen === "session" && React.createElement(Session, { day, onNext: () => { finishSession(); } }),
+          screen === "done" && React.createElement(SessionDone, { day, onHome: () => setScreen("dashboard") })
         )
       );
     }
