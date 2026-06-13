@@ -1,4 +1,0 @@
-[build]
-  command = ""
-  functions = "api"
-  publish = "."
