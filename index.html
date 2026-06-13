@@ -8,10 +8,11 @@
 <body>
   <div id="root"></div>
 
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
+  <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
 
   <script>
+  function startApp() {
     const { useState, useEffect, useRef } = React;
     const C = { ink: "#1B1633", indigo: "#5B4FE9", indigoDeep: "#3E34B8", lilac: "#EEEcFD", mist: "#F7F6FE", green: "#2EB67D", rose: "#E85D75", grayText: "#6B6685" };
     const store = {
@@ -19,7 +20,7 @@
       async set(k, v) { localStorage.setItem(k, v); return { key: k, value: v }; },
       async delete(k) { localStorage.removeItem(k); return { key: k, deleted: true }; }
     };
-    const AI_URL = '/.netlify/functions/claude';
+    const AI_URL = '/api/claude';
     
     function speak(text, rate = 1) {
       if (typeof speechSynthesis === "undefined") return;
@@ -153,10 +154,15 @@
         try {
           const res = await fetch(AI_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 500, messages: [{ role: "user", content: `Speaking exercise: "${ex.content || (Array.isArray(ex.content) ? "power phrases" : "")}". She said: "${typed.trim()}". Reply with: ✨ Stronger version: [rewrite]. ✅ What worked: [one thing]. 🎯 Fix next: [1-2 tips]. Keep it under 100 words.` }] }) });
           const data = await res.json();
-          const text = data.content?.[0]?.text || "No feedback";
+          if (!res.ok) {
+            setFeedback("⚠️ Error " + res.status + ": " + (data.error || data.detail || JSON.stringify(data)));
+            setFeedbackLoading(false);
+            return;
+          }
+          const text = data.content?.[0]?.text || ("No feedback returned. Response: " + JSON.stringify(data).slice(0, 200));
           setFeedback(text);
-        } catch {
-          setFeedback("Connection issue. Try again.");
+        } catch (err) {
+          setFeedback("⚠️ Connection error: " + String(err));
         }
         setFeedbackLoading(false);
       }
@@ -295,6 +301,29 @@
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(React.createElement(App));
+  }
+
+  // Wait for React and ReactDOM to load before starting
+  (function waitForReact() {
+    if (typeof React !== "undefined" && typeof ReactDOM !== "undefined") {
+      startApp();
+    } else {
+      var tries = 0;
+      var timer = setInterval(function () {
+        tries++;
+        if (typeof React !== "undefined" && typeof ReactDOM !== "undefined") {
+          clearInterval(timer);
+          startApp();
+        } else if (tries > 100) {
+          clearInterval(timer);
+          document.getElementById("root").innerHTML =
+            '<div style="text-align:center;padding:80px 20px;font-family:system-ui;color:#6B6685">' +
+            '<h2 style="color:#1B1633">Couldn\'t load the app libraries</h2>' +
+            '<p>Your network may be blocking the CDN. Try a different network or refresh.</p></div>';
+        }
+      }, 50);
+    }
+  })();
   </script>
 </body>
 </html>
