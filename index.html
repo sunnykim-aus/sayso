@@ -132,7 +132,53 @@
       const w = Math.min(Math.floor((day - 1) / 7), 3), d = (day - 1) % 7;
       const [exIdx, setExIdx] = useState(0), [left, setLeft] = useState(90), [running, setRunning] = useState(false), [typed, setTyped] = useState("");
       const [feedback, setFeedback] = useState(null), [feedbackLoading, setFeedbackLoading] = useState(false);
+      const [listening, setListening] = useState(false), [micError, setMicError] = useState("");
+      const recogRef = useRef(null);
       const done = left === 0;
+
+      function toggleMic() {
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR) {
+          setMicError("Your browser doesn't support speech recognition. Try Chrome or Edge on desktop. You can still type below.");
+          return;
+        }
+        if (listening) {
+          if (recogRef.current) recogRef.current.stop();
+          setListening(false);
+          return;
+        }
+        setMicError("");
+        const r = new SR();
+        r.lang = "en-US";
+        r.continuous = true;
+        r.interimResults = true;
+        let finalText = typed ? typed + " " : "";
+        r.onresult = (e) => {
+          let interim = "";
+          for (let i = e.resultIndex; i < e.results.length; i++) {
+            const t = e.results[i][0].transcript;
+            if (e.results[i].isFinal) finalText += t + " ";
+            else interim += t;
+          }
+          setTyped((finalText + interim).trimStart());
+        };
+        r.onerror = (e) => {
+          setListening(false);
+          if (e.error === "not-allowed" || e.error === "service-not-allowed") {
+            setMicError("Microphone permission was blocked. Click the 🔒 in your address bar → allow microphone → try again.");
+          } else if (e.error === "no-speech") {
+            setMicError("Didn't catch anything — try speaking a bit louder.");
+          } else {
+            setMicError("Mic error: " + e.error + ". You can type below instead.");
+          }
+        };
+        r.onend = () => setListening(false);
+        recogRef.current = r;
+        try { r.start(); setListening(true); if (!running) setRunning(true); }
+        catch (err) { setMicError("Couldn't start the mic. You can type below instead."); }
+      }
+
+      useEffect(() => () => { if (recogRef.current) try { recogRef.current.stop(); } catch {} }, []);
 
       useEffect(() => { if (!running || left === 0) return; const t = setTimeout(() => setLeft(left - 1), 1000); return () => clearTimeout(t); }, [running, left]);
 
@@ -191,9 +237,11 @@
           React.createElement("div", { style: { marginTop: 14 } }, React.createElement(Waveform, { active: running && !done, color: done ? C.green : C.indigo })),
           React.createElement("div", { style: { fontFamily: "'Bricolage Grotesque', system-ui", fontWeight: 800, fontSize: 36, color: done ? C.green : C.ink, marginTop: 2 } }, done ? "Done! 🎉" : `${mm}:${ss}`)
         ),
-        done && (ex.type === "pause" || ex.type === "free") && React.createElement("div", { style: { background: "white", border: `2px solid ${C.indigo}`, borderRadius: 18, padding: "16px 18px", marginTop: 14 } },
-          React.createElement("div", { style: { fontWeight: 800, color: C.indigoDeep, fontFamily: "'Bricolage Grotesque', system-ui", fontSize: 15.5 } }, "✍️ Type what you said → get AI feedback"),
-          React.createElement("textarea", { value: typed, onChange: e => setTyped(e.target.value), placeholder: "Type what you said...", rows: 3, style: { width: "100%", boxSizing: "border-box", border: `2px solid ${C.lilac}`, borderRadius: 12, padding: "10px 12px", fontSize: 14.5, fontFamily: "system-ui", marginTop: 10, resize: "vertical", background: C.mist } }),
+        (ex.type === "pause" || ex.type === "free") && React.createElement("div", { style: { background: "white", border: `2px solid ${C.indigo}`, borderRadius: 18, padding: "16px 18px", marginTop: 14 } },
+          React.createElement("div", { style: { fontWeight: 800, color: C.indigoDeep, fontFamily: "'Bricolage Grotesque', system-ui", fontSize: 15.5 } }, "🎙️ Speak or type → get AI feedback"),
+          React.createElement(Button, { onClick: toggleMic, secondary: !listening, style: { marginTop: 10, fontSize: 15, background: listening ? `linear-gradient(135deg, ${C.rose}, #C73E5A)` : undefined, color: listening ? "white" : undefined } }, listening ? "● Recording — tap to stop" : "🎤 Record my voice"),
+          micError && React.createElement("p", { style: { fontSize: 12.5, color: C.rose, marginTop: 8, lineHeight: 1.45 } }, micError),
+          React.createElement("textarea", { value: typed, onChange: e => setTyped(e.target.value), placeholder: "Your words appear here as you speak — or just type.", rows: 3, style: { width: "100%", boxSizing: "border-box", border: `2px solid ${listening ? C.rose : C.lilac}`, borderRadius: 12, padding: "10px 12px", fontSize: 14.5, fontFamily: "system-ui", marginTop: 10, resize: "vertical", background: C.mist } }),
           typed.trim() && React.createElement("div", { style: { display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" } },
             React.createElement(Pill, {}, analyzeSpeech(typed).words, " words"),
             React.createElement(Pill, { bg: analyzeSpeech(typed).hedges >= 2 ? "#FDECEF" : C.lilac, color: analyzeSpeech(typed).hedges >= 2 ? C.rose : C.indigoDeep }, "hedges: ", analyzeSpeech(typed).hedges),
@@ -208,10 +256,10 @@
             )
           )
         ),
-        React.createElement("p", { style: { fontSize: 13, color: C.grayText, marginTop: 12, background: C.mist, padding: "11px 14px", borderRadius: 12 } }, "💡 Speak out loud. Type what you said to get AI feedback."),
+        React.createElement("p", { style: { fontSize: 13, color: C.grayText, marginTop: 12, background: C.mist, padding: "11px 14px", borderRadius: 12 } }, "💡 On speaking drills, tap 🎤 Record (Chrome/Edge) or just type what you said, then get AI feedback."),
         React.createElement("div", { style: { marginTop: 16, display: "flex", flexDirection: "column", gap: 10 } },
           !done && React.createElement(Button, { onClick: () => setRunning(!running), secondary: running }, running ? "Pause ⏸️" : "Start speaking 🎙️"),
-          (done || left < 90) && React.createElement(Button, { onClick: () => { if (exIdx + 1 < exercises.length) { setExIdx(exIdx + 1); setLeft(90); setRunning(false); setTyped(""); setFeedback(null); } else { onNext(); } }, secondary: !done }, exIdx + 1 === exercises.length ? "Finish session ✅" : "Next exercise →")
+          (done || left < 90) && React.createElement(Button, { onClick: () => { if (recogRef.current) try { recogRef.current.stop(); } catch {} setListening(false); if (exIdx + 1 < exercises.length) { setExIdx(exIdx + 1); setLeft(90); setRunning(false); setTyped(""); setFeedback(null); setMicError(""); } else { onNext(); } }, secondary: !done }, exIdx + 1 === exercises.length ? "Finish session ✅" : "Next exercise →")
         )
       );
     }
@@ -326,4 +374,5 @@
   })();
   </script>
 </body>
+</html>
 </html>
