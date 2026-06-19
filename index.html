@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="SAYSO">
   <title>SAYSO Business — Speak with confidence</title>
 </head>
 <body>
@@ -13,19 +15,815 @@
 
   <script>
   function startApp() {
+// VOCAB_DAYS: 28 themed days × 10 words. Tuple: [word, meaning_en, example, meaning_ko]
+const VOCAB_DAYS = [
+  { theme: "Meetings & Communication", themeKo: "회의와 소통", words: [
+    ["agenda","list of topics for a meeting","Let's stick to the agenda today.","회의 안건"],
+    ["minutes","written record of a meeting","Can you take the minutes?","회의록"],
+    ["recap","quick summary","Let me recap what we agreed.","요약"],
+    ["action item","a task assigned in a meeting","Each action item has an owner.","실행 항목 / 할 일"],
+    ["follow up","check on something later","I'll follow up by email.","후속 조치하다"],
+    ["circle back","return to a topic later","Let's circle back to budget after lunch.","나중에 다시 논의하다"],
+    ["table","postpone a topic (US)","Let's table this for now.","(논의를) 보류하다"],
+    ["align","reach agreement on direction","We need to align on priorities.","의견을 맞추다"],
+    ["touch base","briefly reconnect","Let's touch base on Friday.","간단히 연락하다"],
+    ["loop in","include someone in communication","I'll loop in the design team.","(논의에) 포함시키다"],
+  ]},
+  { theme: "Finance & Money", themeKo: "재무와 자금", words: [
+    ["revenue","total income from sales","Revenue grew 20% this year.","매출"],
+    ["margin","profit after costs","Hardware has thin margins.","이익률 / 마진"],
+    ["overhead","fixed running costs","Remote work cut our overhead.","고정 운영비"],
+    ["cash flow","money moving in and out","Cash flow is tight this month.","현금 흐름"],
+    ["forecast","prediction of results","The Q3 forecast looks strong.","예측 / 전망"],
+    ["budget","planned spending limit","We're over budget.","예산"],
+    ["expense","a business cost","Travel is our biggest expense.","비용 / 경비"],
+    ["profit","money left after costs","We turned a profit in year two.","이익 / 수익"],
+    ["invoice","a bill for payment","Send the invoice by Friday.","송장 / 청구서"],
+    ["ROI","return on investment","The campaign's ROI was 4 to 1.","투자 수익률"],
+  ]},
+  { theme: "Projects & Planning", themeKo: "프로젝트와 기획", words: [
+    ["milestone","key progress point","We hit the first milestone early.","주요 단계 / 이정표"],
+    ["deliverable","a promised piece of work","The deliverable is due the 15th.","산출물 / 결과물"],
+    ["scope","the boundaries of the work","That's outside the project scope.","범위"],
+    ["timeline","schedule of events","The timeline is aggressive.","일정"],
+    ["deadline","final due date","The deadline is Monday.","마감일"],
+    ["roadmap","long-term plan","Here's our product roadmap.","로드맵 / 계획표"],
+    ["kickoff","the start of a project","The kickoff is tomorrow.","착수 / 시작"],
+    ["scope creep","work expanding beyond the plan","Watch out for scope creep.","범위 확대 (계획 초과)"],
+    ["dependency","a task that relies on another","This has a dependency on design.","의존 관계"],
+    ["blocker","something stopping progress","The API is our main blocker.","장애 요인"],
+  ]},
+  { theme: "Sales & Customers", themeKo: "영업과 고객", words: [
+    ["lead","a potential customer","We got 50 leads this week.","잠재 고객 (리드)"],
+    ["prospect","a likely future customer","She's our best prospect.","유망 고객"],
+    ["pipeline","upcoming deals","The sales pipeline is full.","영업 파이프라인 (진행 중인 거래)"],
+    ["conversion","turning a lead into a sale","Our conversion rate doubled.","전환 (구매로 이어짐)"],
+    ["quota","required sales target","She beat her quota again.","할당량 / 목표치"],
+    ["churn","customers leaving","Churn dropped after the redesign.","고객 이탈"],
+    ["retention","keeping customers","Retention is cheaper than acquisition.","고객 유지"],
+    ["upsell","sell a more expensive option","We upsell premium plans.","상위 상품 판매"],
+    ["onboarding","getting a customer started","Good onboarding reduces churn.","초기 적응 / 도입 과정"],
+    ["pitch","a persuasive sales talk","Nail your pitch in 60 seconds.","제안 / 홍보 발표"],
+  ]},
+  { theme: "Strategy", themeKo: "전략", words: [
+    ["leverage","use to max advantage","Leverage our brand to expand.","활용하다"],
+    ["competitive edge","an advantage over rivals","Speed is our competitive edge.","경쟁 우위"],
+    ["positioning","how a brand is perceived","Our positioning is premium.","포지셔닝 (시장 위치)"],
+    ["value proposition","the core benefit offered","What's your value proposition?","가치 제안 (핵심 강점)"],
+    ["market share","portion of total sales","We gained 5% market share.","시장 점유율"],
+    ["differentiate","stand out from rivals","We differentiate on service.","차별화하다"],
+    ["scalable","able to grow efficiently","The model is scalable.","확장 가능한"],
+    ["sustainable","able to last long-term","Is this growth sustainable?","지속 가능한"],
+    ["long-term","over an extended period","Think long-term, not quarterly.","장기적인"],
+    ["vision","a long-range goal","Share the company vision.","비전 / 큰 그림"],
+  ]},
+  { theme: "Negotiation", themeKo: "협상", words: [
+    ["anchor","set the first reference number","Anchor high, then trade.","기준점을 제시하다"],
+    ["concession","something you give up","I made one concession on price.","양보"],
+    ["walk away","leave a deal","Be ready to walk away.","협상을 그만두다"],
+    ["counteroffer","a reply offer","They sent a counteroffer.","역제안"],
+    ["trade-off","gaining one thing by losing another","It's a trade-off between cost and speed.","상충 관계 / 절충"],
+    ["win-win","good for both sides","Let's find a win-win.","상호 이익"],
+    ["bottom line","the lowest acceptable point","My bottom line is 10%.","최저 한계선 / 핵심"],
+    ["terms","conditions of a deal","Let's review the terms.","조건"],
+    ["compromise","a middle-ground agreement","We reached a compromise.","타협"],
+    ["leverage","bargaining power","We have leverage here.","협상력 / 영향력"],
+  ]},
+  { theme: "Leadership & Management", themeKo: "리더십과 관리", words: [
+    ["delegate","assign work to others","Learn to delegate.","위임하다"],
+    ["empower","give people authority","Empower your team to decide.","권한을 주다"],
+    ["accountability","being responsible for results","Ownership means accountability.","책임감"],
+    ["mentor","an experienced guide","She's my mentor.","멘토 / 조언자"],
+    ["motivate","inspire people to act","Great leaders motivate.","동기를 부여하다"],
+    ["oversee","supervise a process","I oversee three teams.","총괄하다 / 감독하다"],
+    ["prioritize","rank by importance","Prioritize the urgent tasks.","우선순위를 정하다"],
+    ["decisive","able to decide quickly","Be decisive under pressure.","결단력 있는"],
+    ["align","get everyone on the same page","Align the team on goals.","정렬하다 / 합치하다"],
+    ["delegate (n.)","a representative","She's our delegate at the summit.","대표자"],
+  ]},
+  { theme: "Marketing", themeKo: "마케팅", words: [
+    ["brand","a company's identity","Our brand stands for trust.","브랜드"],
+    ["campaign","a coordinated set of ads","The campaign launches Monday.","캠페인"],
+    ["target audience","intended customers","Know your target audience.","목표 고객층"],
+    ["engagement","customer interaction","Engagement is up 30%.","참여 / 반응"],
+    ["reach","how many people see content","The post had huge reach.","도달 범위"],
+    ["awareness","public knowledge of a brand","Build brand awareness first.","인지도"],
+    ["content","material like posts or videos","Content is king.","콘텐츠"],
+    ["segment","a defined customer group","Target the premium segment.","세분화된 집단"],
+    ["conversion","turning interest into action","Optimize for conversion.","전환"],
+    ["impression","one view of an ad","We got a million impressions.","노출 (광고 조회)"],
+  ]},
+  { theme: "Data & Metrics", themeKo: "데이터와 지표", words: [
+    ["KPI","key performance indicator","Our KPI is monthly users.","핵심 성과 지표"],
+    ["benchmark","a standard to compare to","We beat the benchmark.","기준치 / 비교 기준"],
+    ["metric","a measurable value","Pick one metric that matters.","지표"],
+    ["trend","a general direction over time","The trend is upward.","추세"],
+    ["data-driven","based on data","Make data-driven decisions.","데이터 기반의"],
+    ["insight","a useful understanding","The data gave us insight.","통찰 / 인사이트"],
+    ["dashboard","a visual data display","Check the sales dashboard.","대시보드 (지표 화면)"],
+    ["baseline","a starting reference point","Set a baseline first.","기준선 / 출발점"],
+    ["correlation","a relationship between values","There's a correlation here.","상관관계"],
+    ["forecast","a data-based prediction","The forecast is conservative.","예측"],
+  ]},
+  { theme: "Operations", themeKo: "운영", words: [
+    ["workflow","the sequence of work steps","Map the workflow first.","업무 흐름"],
+    ["bottleneck","a point that slows things","Approval is the bottleneck.","병목 (지체 지점)"],
+    ["streamline","make more efficient","Streamline the process.","간소화하다"],
+    ["capacity","the maximum output possible","We're at full capacity.","수용 능력 / 처리량"],
+    ["logistics","coordination of resources","Logistics are complex.","물류 / 실행 관리"],
+    ["throughput","amount processed in a time","Throughput doubled.","처리량"],
+    ["efficiency","output per input","Efficiency improved 15%.","효율성"],
+    ["process","a set series of actions","Document the process.","과정 / 절차"],
+    ["supply chain","the path from supplier to buyer","The supply chain broke down.","공급망"],
+    ["optimize","make as good as possible","Optimize for cost.","최적화하다"],
+  ]},
+  { theme: "HR & Hiring", themeKo: "인사와 채용", words: [
+    ["candidate","a job applicant","She's a strong candidate.","지원자 / 후보"],
+    ["onboarding","integrating new hires","Onboarding takes two weeks.","입사 적응 과정"],
+    ["retention","keeping employees","Retention improved this year.","인재 유지"],
+    ["headcount","number of employees","We're growing headcount.","인원 수"],
+    ["talent","skilled people","We compete for talent.","인재"],
+    ["compensation","pay and benefits","Compensation is competitive.","보상 / 급여"],
+    ["performance","how well someone works","Performance reviews are due.","성과 / 실적"],
+    ["turnover","rate of staff leaving","Turnover is too high.","이직률"],
+    ["culture","shared company values","Culture matters most.","조직 문화"],
+    ["role","a job position","Define the role clearly.","역할 / 직무"],
+  ]},
+  { theme: "Time & Deadlines", themeKo: "시간과 마감", words: [
+    ["deadline","final due date","The deadline slipped.","마감일"],
+    ["prioritize","rank by importance","Prioritize ruthlessly.","우선순위를 정하다"],
+    ["urgent","needing immediate action","This is urgent.","긴급한"],
+    ["backlog","unfinished accumulated work","Clear the backlog.","밀린 일 / 대기 목록"],
+    ["lead time","time before something is ready","Lead time is two weeks.","준비 기간 / 소요 시간"],
+    ["on track","progressing as planned","We're on track.","계획대로 진행 중인"],
+    ["behind schedule","later than planned","We're behind schedule.","일정보다 늦은"],
+    ["buffer","extra spare time","Add a buffer to the plan.","여유 시간"],
+    ["crunch","a high-pressure period","We're in crunch time.","마감 압박 기간"],
+    ["milestone","a key checkpoint","Next milestone is Friday.","주요 단계"],
+  ]},
+  { theme: "Problem-Solving", themeKo: "문제 해결", words: [
+    ["root cause","the true source of a problem","Find the root cause.","근본 원인"],
+    ["troubleshoot","find and fix a fault","Troubleshoot the issue.","문제를 진단·해결하다"],
+    ["workaround","a temporary fix","Use a workaround for now.","임시 해결책"],
+    ["mitigate","reduce harm or risk","Mitigate the risk early.","완화하다"],
+    ["resolve","solve fully","We resolved the bug.","해결하다"],
+    ["escalate","raise to a higher level","Escalate it to the manager.","상부에 보고하다 / 격상시키다"],
+    ["contingency","a backup plan","Have a contingency.","비상 대책"],
+    ["diagnose","identify a problem","Diagnose before fixing.","진단하다"],
+    ["address","deal with an issue","We'll address it today.","(문제를) 다루다 / 처리하다"],
+    ["tackle","take on a problem","Let's tackle this together.","(문제에) 착수하다"],
+  ]},
+  { theme: "Growth & Scaling", themeKo: "성장과 확장", words: [
+    ["scale","grow capacity efficiently","Scale the business.","규모를 키우다"],
+    ["expand","grow into new areas","Expand into Asia.","확장하다"],
+    ["traction","early signs of success","The app is gaining traction.","호응 / 성장세"],
+    ["momentum","building forward force","We have momentum now.","추진력 / 탄력"],
+    ["ramp up","increase quickly","Ramp up production.","빠르게 늘리다"],
+    ["market penetration","share gained in a market","Penetration is rising.","시장 침투율"],
+    ["growth rate","speed of growth","Growth rate hit 30%.","성장률"],
+    ["scalable","able to grow cheaply","The platform is scalable.","확장 가능한"],
+    ["exponential","rapidly accelerating","Exponential growth.","기하급수적인"],
+    ["plateau","stop growing","Sales hit a plateau.","정체기에 이르다"],
+  ]},
+];
+
+
+// VOCAB_DAYS continued: days 15-28
+const VOCAB_DAYS_2 = [
+  { theme: "Decision-Making", themeKo: "의사 결정", words: [
+    ["trade-off","gain one thing, lose another","Every choice is a trade-off.","상충 / 절충"],
+    ["criteria","standards for judging","Set clear criteria.","기준 / 평가 항목"],
+    ["weigh","consider carefully","Weigh the options.","따져보다 / 저울질하다"],
+    ["consensus","general agreement","We reached consensus.","합의"],
+    ["judgment call","a decision based on opinion","It's a judgment call.","주관적 판단"],
+    ["rationale","the reasoning behind","Explain your rationale.","근거 / 논리"],
+    ["assess","evaluate carefully","Assess the risk.","평가하다"],
+    ["decisive","quick to decide","Be decisive.","결단력 있는"],
+    ["evaluate","judge the value of","Evaluate each vendor.","평가하다"],
+    ["prioritize","rank by importance","Prioritize impact.","우선순위를 정하다"],
+  ]},
+  { theme: "Risk & Compliance", themeKo: "위험과 규정 준수", words: [
+    ["liability","legal responsibility / risk","Unclear contracts create liability.","법적 책임 / 부담"],
+    ["compliance","following rules","Ensure full compliance.","규정 준수"],
+    ["risk","chance of loss","Assess the risk first.","위험"],
+    ["mitigate","reduce a risk","Mitigate exposure.","완화하다"],
+    ["audit","an official check","We passed the audit.","감사"],
+    ["regulation","an official rule","New regulations apply.","규정 / 규제"],
+    ["exposure","amount at risk","Limit our exposure.","위험 노출 정도"],
+    ["due diligence","careful pre-deal research","Do your due diligence.","사전 실사 / 정밀 조사"],
+    ["safeguard","a protective measure","Add safeguards.","보호 장치"],
+    ["breach","a violation","A data breach occurred.","위반 / 유출"],
+  ]},
+  { theme: "Innovation & Ideas", themeKo: "혁신과 아이디어", words: [
+    ["brainstorm","generate ideas freely","Let's brainstorm.","아이디어를 모으다"],
+    ["prototype","an early test version","Build a prototype.","시제품 / 프로토타입"],
+    ["iterate","improve through versions","Iterate quickly.","반복 개선하다"],
+    ["disrupt","radically change a market","They disrupted the industry.","(시장을) 뒤흔들다"],
+    ["pivot","change direction","We pivoted to B2B.","방향 전환하다"],
+    ["cutting-edge","most advanced","Cutting-edge tech.","최첨단의"],
+    ["breakthrough","a major advance","A real breakthrough.","획기적 발전 / 돌파구"],
+    ["ideate","form ideas","Ideate before building.","아이디어를 구상하다"],
+    ["novel","new and original","A novel approach.","새롭고 참신한"],
+    ["R&D","research and development","Invest in R&D.","연구개발"],
+  ]},
+  { theme: "Teamwork & Collaboration", themeKo: "팀워크와 협업", words: [
+    ["collaborate","work together","Collaborate across teams.","협업하다"],
+    ["synergy","combined benefit","The merger created synergy.","시너지 / 상승효과"],
+    ["cross-functional","across departments","A cross-functional team.","부서 간의"],
+    ["stakeholder","anyone affected","Update all stakeholders.","이해관계자"],
+    ["buy-in","support and agreement","Get leadership buy-in.","동의 / 지지 확보"],
+    ["alignment","agreement on direction","We need alignment.","의견 일치"],
+    ["cohesive","working as a unit","A cohesive team.","결속력 있는"],
+    ["contribute","add value","Everyone contributes.","기여하다"],
+    ["coordinate","organize together","Coordinate the launch.","조율하다"],
+    ["rapport","a positive relationship","Build rapport early.","친밀한 관계 / 라포"],
+  ]},
+  { theme: "Performance & Feedback", themeKo: "성과와 피드백", words: [
+    ["feedback","comments to improve","Give honest feedback.","피드백"],
+    ["appraisal","a formal review","The annual appraisal.","평가 / 고과"],
+    ["benchmark","a comparison standard","Beat the benchmark.","기준치"],
+    ["underperform","do worse than expected","The team underperformed.","기대 이하로 하다"],
+    ["exceed","do better than expected","We exceeded targets.","초과 달성하다"],
+    ["constructive","helpful and positive","Keep feedback constructive.","건설적인"],
+    ["review","an evaluation","Your review is Friday.","검토 / 평가"],
+    ["recognition","credit for good work","Give recognition.","인정 / 표창"],
+    ["improvement","getting better","Room for improvement.","개선"],
+    ["metrics","measures of success","Track the right metrics.","지표"],
+  ]},
+  { theme: "Presentations", themeKo: "발표", words: [
+    ["pitch","a persuasive presentation","Open your pitch strong.","제안 발표"],
+    ["slide deck","a set of slides","Send me the slide deck.","슬라이드 자료"],
+    ["takeaway","a key point to remember","The main takeaway is…","핵심 요점"],
+    ["highlight","emphasize a point","Highlight the results.","강조하다"],
+    ["walk through","explain step by step","Walk me through it.","차근차근 설명하다"],
+    ["key point","a central idea","Three key points.","핵심 사항"],
+    ["visual","an image or chart","Add a visual here.","시각 자료"],
+    ["engage","hold attention","Engage the audience.","(관심을) 끌다"],
+    ["concise","short and clear","Keep it concise.","간결한"],
+    ["recap","summarize at the end","Recap before closing.","요약하다"],
+  ]},
+  { theme: "Email & Writing", themeKo: "이메일과 작문", words: [
+    ["concise","brief and clear","Keep emails concise.","간결한"],
+    ["follow up","a reminder message","Send a follow-up.","후속 연락"],
+    ["attachment","a file sent with email","See the attachment.","첨부 파일"],
+    ["recipient","the person receiving","Add the recipient.","수신자"],
+    ["subject line","the email title","Write a clear subject line.","제목 줄"],
+    ["CC","copy others on email","CC the manager.","참조로 넣다"],
+    ["draft","an unfinished version","Send me a draft.","초안"],
+    ["prompt","quick / on time","Thanks for the prompt reply.","신속한"],
+    ["regarding","about / concerning","Regarding your request…","~에 관하여"],
+    ["attached","included with the message","Please find attached…","첨부된"],
+  ]},
+  { theme: "Client Relationships", themeKo: "고객 관계", words: [
+    ["rapport","a good relationship","Build client rapport.","친밀한 관계"],
+    ["retention","keeping clients","Focus on retention.","고객 유지"],
+    ["touchpoint","a moment of contact","Every touchpoint matters.","접점 / 연락 지점"],
+    ["expectations","what the client wants","Set clear expectations.","기대치"],
+    ["deliver","provide what was promised","We deliver on time.","제공하다 / 이행하다"],
+    ["account","a client relationship","She manages the account.","거래처 / 고객 계정"],
+    ["satisfaction","how happy a client is","Measure satisfaction.","만족도"],
+    ["trust","confidence in you","Trust takes time.","신뢰"],
+    ["responsive","quick to reply","Stay responsive.","반응이 빠른"],
+    ["loyalty","ongoing commitment","Reward loyalty.","충성도"],
+  ]},
+  { theme: "Budgeting & Costs", themeKo: "예산과 비용", words: [
+    ["budget","planned spending","Stick to the budget.","예산"],
+    ["allocate","assign resources","Allocate more to ads.","배분하다"],
+    ["overhead","fixed running costs","Reduce overhead.","고정비"],
+    ["cut costs","reduce spending","We must cut costs.","비용을 절감하다"],
+    ["expense","a cost","Log the expense.","비용"],
+    ["forecast","predict finances","Forecast next quarter.","예측하다"],
+    ["variance","difference from plan","Explain the variance.","차이 / 편차"],
+    ["fiscal","relating to finances","The fiscal year ends June.","회계의 / 재정의"],
+    ["expenditure","money spent","Track expenditure.","지출"],
+    ["reserve","saved funds","Keep a cash reserve.","예비 자금"],
+  ]},
+  { theme: "Productivity", themeKo: "생산성", words: [
+    ["efficient","getting more with less","Work efficiently.","효율적인"],
+    ["prioritize","do the important first","Prioritize your day.","우선순위를 정하다"],
+    ["streamline","simplify a process","Streamline approvals.","간소화하다"],
+    ["multitask","do several things at once","Multitasking lowers focus.","동시에 여러 일을 하다"],
+    ["focus","concentrated attention","Protect your focus.","집중"],
+    ["output","what gets produced","Increase output.","산출 / 결과물"],
+    ["time-block","schedule in blocks","Time-block your morning.","시간을 구간별로 나누다"],
+    ["delegate","assign to others","Delegate small tasks.","위임하다"],
+    ["automate","let machines do it","Automate the report.","자동화하다"],
+    ["optimize","make most effective","Optimize your workflow.","최적화하다"],
+  ]},
+  { theme: "Change & Transformation", themeKo: "변화와 혁신", words: [
+    ["transition","a change from one state to another","Manage the transition.","전환 / 이행"],
+    ["restructure","reorganize","We restructured the team.","구조를 개편하다"],
+    ["adapt","adjust to change","Adapt quickly.","적응하다"],
+    ["transform","change completely","Transform the business.","변모시키다"],
+    ["rollout","a phased launch","The rollout starts Monday.","단계적 시행 / 출시"],
+    ["adoption","taking up something new","User adoption is high.","채택 / 도입"],
+    ["shift","a change in direction","A shift in strategy.","전환 / 변화"],
+    ["overhaul","a complete revision","An overhaul of the system.","대대적 개편"],
+    ["agile","flexible and fast","Stay agile.","민첩한 / 유연한"],
+    ["resilient","able to recover","A resilient team.","회복력 있는"],
+  ]},
+  { theme: "Networking & Influence", themeKo: "인맥과 영향력", words: [
+    ["rapport","a warm connection","Build rapport fast.","친밀한 관계"],
+    ["connection","a useful contact","A great connection.","인맥 / 연결고리"],
+    ["referral","a recommendation","She came by referral.","추천 / 소개"],
+    ["mutual","shared by both","A mutual benefit.","상호의"],
+    ["leverage","use to advantage","Leverage your network.","활용하다"],
+    ["credibility","being believable","Build credibility.","신뢰성"],
+    ["reputation","how others see you","Protect your reputation.","평판"],
+    ["advocate","someone who supports you","Be an advocate.","지지자 / 옹호자"],
+    ["persuade","convince someone","Persuade with data.","설득하다"],
+    ["reciprocate","give back in return","Reciprocate favors.","보답하다"],
+  ]},
+  { theme: "Career & Professional Growth", themeKo: "경력과 성장", words: [
+    ["promotion","a move to a higher role","She earned a promotion.","승진"],
+    ["skill set","your range of abilities","Broaden your skill set.","보유 기술 / 역량"],
+    ["mentor","an experienced guide","Find a mentor.","멘토"],
+    ["trajectory","a path of growth","A strong career trajectory.","궤도 / 진로"],
+    ["milestone","a career achievement","A major milestone.","이정표 / 중요 성취"],
+    ["advancement","moving forward","Career advancement.","발전 / 승진"],
+    ["expertise","deep skill","Build expertise.","전문성"],
+    ["proactive","acting in advance","Be proactive.","주도적인"],
+    ["initiative","self-driven action","Show initiative.","주도성 / 추진력"],
+    ["growth","development over time","Focus on growth.","성장"],
+  ]},
+  { theme: "Executive & Boardroom", themeKo: "임원과 이사회", words: [
+    ["stakeholder","anyone with an interest","Brief the stakeholders.","이해관계자"],
+    ["bottom line","the final profit / key point","What's the bottom line?","핵심 / 최종 수익"],
+    ["strategic","relating to long-term goals","A strategic decision.","전략적인"],
+    ["oversight","supervision","Board oversight.","감독 / 관리 감독"],
+    ["governance","how an org is run","Strong governance.","지배 구조 / 운영 체계"],
+    ["fiduciary","relating to trust over money","A fiduciary duty.","수탁자의 / 신탁의"],
+    ["quarterly","every three months","Quarterly results.","분기별의"],
+    ["shareholder","an owner of shares","Shareholder value.","주주"],
+    ["mandate","official authority / order","A clear mandate.","권한 / 위임"],
+    ["vision","a long-range goal","Cast a bold vision.","비전"],
+  ]},
+];
+
+
+// PV: phrasal verb bank. Tuple: [verb, meaning_en, example, meaning_ko]
+const PV = [
+  ["bring up","mention a topic","I'd like to bring up the budget.","(화제를) 꺼내다"],
+  ["follow up","check on later","I'll follow up tomorrow.","후속 조치하다"],
+  ["set up","arrange / organize","Set up a call with the team.","마련하다 / 준비하다"],
+  ["carry out","perform / complete","We carried out the survey.","수행하다"],
+  ["figure out","find the answer","Let's figure out the cause.","알아내다"],
+  ["point out","draw attention to","She pointed out a risk.","지적하다"],
+  ["put off","postpone","We put off the launch.","미루다"],
+  ["take on","accept work","I'll take on the account.","(일을) 맡다"],
+  ["take over","assume control","Maria will take over.","인계받다 / 떠맡다"],
+  ["run by","ask for opinion","Let me run this by you.","의견을 구하다"],
+  ["sign off on","give approval","He signed off on it.","승인하다"],
+  ["fill in","give missing info","Fill me in on the meeting.","상황을 알려주다"],
+  ["fill out","complete a form","Fill out the report.","(양식을) 작성하다"],
+  ["hand in","submit","I handed in the proposal.","제출하다"],
+  ["hand over","give responsibility","Hand over your tasks.","넘겨주다 / 인계하다"],
+  ["look into","investigate","We'll look into it.","조사하다"],
+  ["look over","review quickly","Look over my slides.","훑어보다"],
+  ["go over","review in detail","Let's go over the numbers.","검토하다"],
+  ["come up with","create an idea","She came up with a plan.","생각해 내다"],
+  ["catch up on","do delayed work","Catch up on emails.","밀린 일을 처리하다"],
+  ["deal with","handle a problem","I'll deal with it.","처리하다"],
+  ["work out","find a solution","We'll work it out.","해결하다"],
+  ["sort out","fix / organize","IT sorted it out.","정리하다 / 해결하다"],
+  ["reach out","contact someone","Reach out if you need help.","연락하다"],
+  ["get back to","respond later","I'll get back to you.","나중에 답하다"],
+  ["cut back on","reduce","Cut back on travel.","줄이다"],
+  ["scale up","grow capacity","Scale up production.","규모를 늘리다"],
+  ["wrap up","finish","Let's wrap up.","마무리하다"],
+  ["kick off","start","We kick off Monday.","시작하다"],
+  ["lay out","explain clearly","He laid out the plan.","제시하다 / 설명하다"],
+  ["back up","support / make a copy","Back up your claim with data.","뒷받침하다 / 백업하다"],
+  ["break down","analyze in parts","Break down the costs.","세분화하다 / 분석하다"],
+  ["bring in","introduce / earn","Bring in an expert.","들여오다 / 영입하다"],
+  ["bring about","cause to happen","Bring about change.","일으키다 / 초래하다"],
+  ["call off","cancel","We called off the deal.","취소하다"],
+  ["carry on","continue","Carry on without me.","계속하다"],
+  ["check in","report / confirm","Check in with the client.","연락하여 확인하다"],
+  ["clear up","resolve confusion","Let's clear this up.","명확히 하다"],
+  ["close down","shut permanently","They closed down the branch.","폐쇄하다"],
+  ["come across","seem / encounter","You come across as confident.","~처럼 보이다 / 우연히 마주치다"],
+  ["count on","rely on","Count on the team.","의지하다"],
+  ["cut off","stop / disconnect","We were cut off.","중단시키다 / 끊다"],
+  ["draw up","prepare a document","Draw up a contract.","작성하다"],
+  ["drop off","decline / deliver","Sales dropped off.","감소하다 / 내려주다"],
+  ["ease off","reduce intensity","Ease off the pressure.","완화하다"],
+  ["end up","finally result in","We ended up agreeing.","결국 ~하게 되다"],
+  ["factor in","include in thinking","Factor in the cost.","고려에 넣다"],
+  ["fall behind","lag","We fell behind schedule.","뒤처지다"],
+  ["fall through","fail to happen","The deal fell through.","무산되다"],
+  ["firm up","make definite","Firm up the details.","확정하다"],
+  ["focus on","concentrate on","Focus on the goal.","집중하다"],
+  ["follow through","complete as promised","Follow through on it.","끝까지 해내다"],
+  ["free up","make available","Free up some time.","(시간·자원을) 확보하다"],
+  ["gear up","prepare","Gear up for launch.","준비하다"],
+  ["get across","communicate clearly","Get your point across.","(의미를) 전달하다"],
+  ["get ahead","make progress / succeed","Work hard to get ahead.","앞서 나가다"],
+  ["get around to","finally do","I'll get around to it.","겨우 시간 내어 하다"],
+  ["give up","quit","Don't give up.","포기하다"],
+  ["go ahead","proceed","Go ahead and start.","진행하다"],
+  ["go through","examine / experience","Go through the report.","검토하다 / 겪다"],
+  ["hold off","delay","Hold off on the order.","미루다 / 보류하다"],
+  ["hold on","wait","Hold on a second.","기다리다"],
+  ["hold up","delay / endure","The shipment was held up.","지연시키다 / 버티다"],
+  ["iron out","resolve problems","Iron out the issues.","원만히 해결하다"],
+  ["keep up","maintain pace","Keep up the good work.","유지하다 / 따라가다"],
+  ["keep up with","stay current","Keep up with trends.","뒤떨어지지 않다"],
+  ["lay off","dismiss staff","They laid off ten people.","해고하다"],
+  ["lead to","result in","This leads to growth.","~로 이어지다"],
+  ["leave out","omit","Don't leave out details.","빼다 / 생략하다"],
+  ["let down","disappoint","Don't let the team down.","실망시키다"],
+  ["line up","arrange / organize","Line up the meetings.","줄지어 준비하다"],
+  ["live up to","meet expectations","Live up to the hype.","부응하다"],
+  ["map out","plan in detail","Map out the strategy.","상세히 계획하다"],
+  ["move forward","proceed","Let's move forward.","앞으로 나아가다"],
+  ["narrow down","reduce options","Narrow down the list.","좁히다"],
+  ["opt for","choose","We opted for the cheaper one.","선택하다"],
+  ["pass on","decline / transfer","I'll pass on that offer.","거절하다 / 전달하다"],
+  ["pay off","produce results","The risk paid off.","결실을 맺다"],
+  ["phase out","gradually stop","Phase out the old model.","단계적으로 폐지하다"],
+  ["pick up","improve / collect","Sales picked up.","나아지다 / 가져오다"],
+  ["pin down","define precisely","Pin down the budget.","확정하다"],
+  ["pitch in","help out","Everyone pitched in.","협력하다 / 거들다"],
+  ["plan ahead","prepare in advance","Plan ahead for Q4.","미리 계획하다"],
+  ["play down","minimize importance","Don't play down the risk.","축소하다 / 대수롭지 않게 말하다"],
+  ["press on","continue with effort","Press on despite setbacks.","계속 밀고 나가다"],
+  ["pull off","succeed at something hard","We pulled off the launch.","해내다"],
+  ["pull together","cooperate","The team pulled together.","협력하다"],
+  ["push back","resist / delay","She pushed back on the plan.","반대하다 / 미루다"],
+  ["push for","strongly request","Push for a better deal.","강하게 요구하다"],
+  ["put forward","propose","Put forward an idea.","제안하다"],
+  ["put together","assemble","Put together a report.","작성하다 / 구성하다"],
+  ["ramp up","increase","Ramp up marketing.","늘리다 / 강화하다"],
+  ["roll out","launch in phases","Roll out the feature.","출시하다"],
+  ["round up","gather / increase to a number","Round up the numbers.","모으다 / 반올림하다"],
+  ["rule out","eliminate a possibility","Rule out that option.","배제하다"],
+  ["run into","encounter","We ran into a problem.","맞닥뜨리다"],
+  ["run out of","have none left","We ran out of time.","다 떨어지다"],
+  ["scale back","reduce","Scale back the plan.","축소하다"],
+  ["screen out","filter away","Screen out weak leads.","걸러내다"],
+  ["set out","begin / state aims","Set out the objectives.","착수하다 / 명시하다"],
+  ["settle on","decide on","We settled on a date.","결정하다"],
+  ["shut down","close / stop","Shut down the project.","중단하다 / 폐쇄하다"],
+  ["sign up","register","Sign up new clients.","등록하다 / 가입시키다"],
+  ["single out","select one","Don't single out a person.","골라내다 / 지목하다"],
+  ["sit down with","meet to discuss","Sit down with the client.","마주 앉아 논의하다"],
+  ["smooth over","ease tension","Smooth over the conflict.","무마하다"],
+  ["sort through","examine items","Sort through the data.","골라 정리하다"],
+  ["spell out","explain in detail","Spell out the terms.","상세히 설명하다"],
+  ["stand by","support / wait","I stand by my decision.","지지하다 / 대기하다"],
+  ["stand out","be noticeable","Make your pitch stand out.","두드러지다"],
+  ["step down","resign","The CEO stepped down.","사임하다"],
+  ["step in","intervene","I had to step in.","개입하다"],
+  ["step up","take responsibility","Step up and lead.","나서다 / 책임지다"],
+  ["stick to","not deviate","Stick to the agenda.","고수하다"],
+  ["stick with","continue with","Stick with the plan.","계속 유지하다"],
+  ["sum up","summarize","To sum up…","요약하다"],
+  ["take in","absorb / understand","Take in the feedback.","받아들이다 / 이해하다"],
+  ["take up","begin / occupy","Take up a new role.","맡다 / 차지하다"],
+  ["talk over","discuss","Talk it over with HR.","상의하다"],
+  ["team up","join forces","Team up with sales.","협력하다 / 팀을 이루다"],
+  ["throw out","reject / discard","They threw out the idea.","폐기하다 / 거부하다"],
+  ["tie up","finalize / occupy","Tie up loose ends.","마무리짓다"],
+  ["touch on","mention briefly","Touch on the risks.","간단히 언급하다"],
+  ["turn around","reverse decline","Turn the business around.","호전시키다"],
+  ["turn down","reject","They turned down the offer.","거절하다"],
+  ["turn out","result / prove to be","It turned out well.","결과적으로 ~되다"],
+  ["wade through","work through slowly","Wade through paperwork.","힘겹게 헤쳐 나가다"],
+  ["weigh up","consider carefully","Weigh up the options.","따져보다"],
+  ["win over","gain support","Win over the board.","설득하다 / 마음을 얻다"],
+  ["work on","improve","Work on your delivery.","공들이다 / 개선하다"],
+  ["work towards","aim for","Work towards the goal.","~을 향해 노력하다"],
+  ["zero in on","focus precisely","Zero in on the issue.","집중하다 / 겨냥하다"],
+  ["account for","explain / make up","Marketing accounts for 30%.","설명하다 / 차지하다"],
+  ["bank on","rely on","Don't bank on it.","믿다 / 기대다"],
+  ["branch out","expand into new areas","Branch out into Asia.","사업을 확장하다"],
+  ["build on","develop further","Build on our success.","발전시키다"],
+  ["cash in on","profit from","Cash in on the trend.","~로 이득을 보다"],
+  ["draw on","use as a resource","Draw on your experience.","활용하다"],
+  ["follow up on","pursue further","Follow up on the lead.","후속 조치하다"],
+  ["key in on","focus on","Key in on the metric.","집중하다"],
+  ["partner with","collaborate","Partner with a vendor.","제휴하다"],
+  ["weigh in","give an opinion","Weigh in on the debate.","의견을 보태다"],
+  ["bow out","withdraw gracefully","He bowed out of the race.","물러나다"],
+];
+
+
+// POWER_DAYS: 28 days × 5 swaps. Each: {weak, strong, ko} (ko = Korean of the strong line)
+const POWER_DAYS_1 = [
+  // Week 1 — Presence
+  [
+    {weak:"Sorry, can I just say something?",strong:"I'd like to add a point here.",ko:"한 가지 의견을 덧붙이고 싶습니다."},
+    {weak:"I'm just the new analyst…",strong:"I'm the analyst leading this report.",ko:"제가 이 보고서를 담당하는 분석가입니다."},
+    {weak:"This might be a dumb question, but…",strong:"Quick question:",ko:"간단히 여쭤볼게요:"},
+    {weak:"I kind of think maybe we could…",strong:"I suggest we…",ko:"저는 ~할 것을 제안합니다."},
+    {weak:"Hopefully that makes sense?",strong:"Happy to clarify any part of that.",ko:"어느 부분이든 기꺼이 설명드리겠습니다."},
+  ],
+  [
+    {weak:"Um, hi, I'm… I work in marketing.",strong:"Hi, I'm Sun — I run marketing.",ko:"안녕하세요, 선입니다. 마케팅을 총괄하고 있습니다."},
+    {weak:"I don't really have much to add.",strong:"Here's one thing worth adding.",ko:"덧붙일 만한 점이 하나 있습니다."},
+    {weak:"Is it okay if I ask something?",strong:"I have a question.",ko:"질문이 하나 있습니다."},
+    {weak:"I guess that's basically it.",strong:"That's my recommendation.",ko:"이것이 제 권고 사항입니다."},
+    {weak:"Sorry for taking your time.",strong:"Thanks for your time.",ko:"시간 내주셔서 감사합니다."},
+  ],
+  [
+    {weak:"I'm not sure if this is right…",strong:"Here's how I see it.",ko:"제 생각은 이렇습니다."},
+    {weak:"Maybe we could possibly try…",strong:"Let's try…",ko:"~을 시도해 봅시다."},
+    {weak:"I think it's kind of important.",strong:"This is important.",ko:"이것은 중요합니다."},
+    {weak:"Sorry to bother you, but…",strong:"When you have a moment —",ko:"잠깐 시간 되실 때 —"},
+    {weak:"I'll try my best to finish it.",strong:"I'll have it done by Thursday.",ko:"목요일까지 끝내겠습니다."},
+  ],
+  [
+    {weak:"It's probably nothing, but…",strong:"One thing worth flagging:",ko:"짚고 넘어갈 점이 하나 있습니다:"},
+    {weak:"I feel like maybe it could work?",strong:"I believe this will work.",ko:"이것이 효과가 있을 거라 확신합니다."},
+    {weak:"Sorry, I didn't quite catch that.",strong:"Could you say that again?",ko:"다시 한번 말씀해 주시겠어요?"},
+    {weak:"I was just wondering if…",strong:"I'd like to know…",ko:"~을 알고 싶습니다."},
+    {weak:"That's just my opinion though.",strong:"That's my view, based on the data.",ko:"데이터를 근거로 한 제 견해입니다."},
+  ],
+  [
+    {weak:"I might be totally wrong here.",strong:"Here's my take.",ko:"제 의견은 이렇습니다."},
+    {weak:"Can I maybe share an idea?",strong:"I have an idea.",ko:"아이디어가 하나 있습니다."},
+    {weak:"It's not a big deal, really.",strong:"This matters because…",ko:"이것이 중요한 이유는 ~입니다."},
+    {weak:"Sorry, just one more thing…",strong:"One more point:",ko:"한 가지만 더 말씀드리면:"},
+    {weak:"I hope I explained that okay.",strong:"Let me know what's unclear.",ko:"불분명한 부분이 있으면 말씀해 주세요."},
+  ],
+  [
+    {weak:"I don't want to step on toes…",strong:"I'd like to weigh in.",ko:"제 의견을 보태고 싶습니다."},
+    {weak:"Maybe it's just me, but…",strong:"I've noticed something:",ko:"한 가지 발견한 점이 있습니다:"},
+    {weak:"I think I can probably do it.",strong:"I can do this.",ko:"제가 할 수 있습니다."},
+    {weak:"Sorry if this sounds silly.",strong:"Here's a fresh angle.",ko:"새로운 관점을 하나 말씀드리면."},
+    {weak:"Does that kind of make sense?",strong:"What questions do you have?",ko:"어떤 질문이 있으신가요?"},
+  ],
+  [
+    {weak:"I just wanted to quickly check…",strong:"Quick check:",ko:"간단히 확인하겠습니다:"},
+    {weak:"I guess we could go with that.",strong:"Let's go with that.",ko:"그것으로 진행합시다."},
+    {weak:"I'm sorry, I'm a bit confused.",strong:"Help me understand this part.",ko:"이 부분을 이해하도록 도와주세요."},
+    {weak:"Hopefully I'm making sense.",strong:"To be clear:",ko:"분명히 말씀드리면:"},
+    {weak:"That's all I guess, thanks.",strong:"Here are the next steps.",ko:"다음 단계는 이렇습니다."},
+  ],
+  // Week 2 — Meetings
+  [
+    {weak:"I'm not sure, but maybe we should…",strong:"My recommendation is to…",ko:"제 권고는 ~하는 것입니다."},
+    {weak:"Sorry to interrupt, but…",strong:"Before we move on — one point.",ko:"넘어가기 전에 한 가지만요."},
+    {weak:"I could be wrong, but…",strong:"Based on the data, I disagree.",ko:"데이터를 보면 저는 생각이 다릅니다."},
+    {weak:"Does that make sense? Sorry if not.",strong:"What questions do you have?",ko:"어떤 질문이 있으신가요?"},
+    {weak:"I'll try to get it done.",strong:"I'll have it to you by Thursday.",ko:"목요일까지 전달하겠습니다."},
+  ],
+  [
+    {weak:"Um, so, my update is kind of…",strong:"Here's my update in three points.",ko:"제 업데이트를 세 가지로 말씀드립니다."},
+    {weak:"I think there might be a blocker.",strong:"We have one blocker:",ko:"한 가지 장애 요인이 있습니다:"},
+    {weak:"Maybe we're a little behind.",strong:"We're two days behind. Here's the fix.",ko:"이틀 지연됐습니다. 해결 방안은 이렇습니다."},
+    {weak:"I sort of disagree, I think.",strong:"I see it differently.",ko:"저는 다르게 봅니다."},
+    {weak:"Anyway, that's my bit.",strong:"That's my update — questions?",ko:"이상입니다 — 질문 있으신가요?"},
+  ],
+  [
+    {weak:"I feel like that won't work maybe.",strong:"That approach has one risk:",ko:"그 방식에는 한 가지 위험이 있습니다:"},
+    {weak:"Sorry, can I go back to something?",strong:"Let's revisit one point.",ko:"한 가지를 다시 짚어보겠습니다."},
+    {weak:"I guess I'm a bit lost here.",strong:"Can we clarify the goal?",ko:"목표를 명확히 할 수 있을까요?"},
+    {weak:"Maybe we should think about it?",strong:"Let's decide today.",ko:"오늘 결정합시다."},
+    {weak:"I'll do it if no one else will.",strong:"I'll take this on.",ko:"제가 맡겠습니다."},
+  ],
+  [
+    {weak:"It might not be relevant, but…",strong:"This is relevant because…",ko:"이것이 관련 있는 이유는 ~입니다."},
+    {weak:"I think the data sort of shows…",strong:"The data shows…",ko:"데이터는 ~을 보여줍니다."},
+    {weak:"Can we maybe wrap up soon?",strong:"Let's land on a decision.",ko:"결론을 내립시다."},
+    {weak:"I'm not the expert, but…",strong:"From my experience,",ko:"제 경험상,"},
+    {weak:"Sorry, that was unclear of me.",strong:"Let me restate that clearly.",ko:"명확하게 다시 말씀드리겠습니다."},
+  ],
+  [
+    {weak:"I don't really mind either way.",strong:"I have a preference: option A.",ko:"저는 A안을 선호합니다."},
+    {weak:"Maybe someone could look at it?",strong:"Who can own this?",ko:"이것을 누가 맡으시겠어요?"},
+    {weak:"I think we kind of agreed?",strong:"To confirm, we agreed on…",ko:"확인차, 우리는 ~에 합의했습니다."},
+    {weak:"Sorry, I keep talking.",strong:"I'll keep this brief.",ko:"간단히 말씀드리겠습니다."},
+    {weak:"That's probably fine I think.",strong:"That works. Let's proceed.",ko:"좋습니다. 진행합시다."},
+  ],
+  [
+    {weak:"I guess we ran out of time…",strong:"Let's capture next steps before we close.",ko:"마치기 전에 다음 단계를 정리합시다."},
+    {weak:"Maybe I'll send a recap?",strong:"I'll send a recap with owners.",ko:"담당자별 요약을 보내드리겠습니다."},
+    {weak:"Sorry this meeting ran long.",strong:"Thanks — we covered a lot.",ko:"감사합니다 — 많은 내용을 다뤘습니다."},
+    {weak:"I think we sort of decided.",strong:"Decision made: we go with B.",ko:"결정했습니다: B안으로 갑니다."},
+    {weak:"Let me know if that's okay?",strong:"I'll proceed unless I hear otherwise.",ko:"별다른 말씀 없으면 진행하겠습니다."},
+  ],
+  [
+    {weak:"Sorry, I wasn't really listening.",strong:"Could you recap the last point?",ko:"방금 말씀을 다시 정리해 주시겠어요?"},
+    {weak:"I think we maybe need more time.",strong:"Let's set a follow-up to decide.",ko:"결정을 위한 후속 회의를 잡읍시다."},
+    {weak:"That's not really my area though.",strong:"I'll bring in the right person.",ko:"적임자를 모셔오겠습니다."},
+    {weak:"I guess I can try to help.",strong:"I'll own this part.",ko:"이 부분은 제가 맡겠습니다."},
+    {weak:"Um, does anyone have thoughts?",strong:"I'd like to hear each of you on this.",ko:"이 건에 대해 한 분씩 의견을 듣고 싶습니다."},
+  ],
+];
+
+
+// POWER_DAYS continued: days 15-28
+const POWER_DAYS_2 = [
+  // Week 3 — Influence
+  [
+    {weak:"It's probably not a big deal, but…",strong:"Here's why this matters:",ko:"이것이 중요한 이유는 다음과 같습니다:"},
+    {weak:"I guess we could consider…",strong:"There are two options. I recommend the first.",ko:"두 가지 선택지가 있습니다. 첫 번째를 권합니다."},
+    {weak:"Maybe it's just me, but…",strong:"I've noticed a pattern worth discussing.",ko:"논의할 만한 패턴을 발견했습니다."},
+    {weak:"If it's not too much trouble…",strong:"I need this by Friday to stay on track.",ko:"일정을 지키려면 금요일까지 필요합니다."},
+    {weak:"I think it might possibly work.",strong:"This will work. Here's the evidence.",ko:"이것은 효과가 있습니다. 근거는 이렇습니다."},
+  ],
+  [
+    {weak:"So, um, my idea is kind of…",strong:"Here's my proposal in one line.",ko:"제 제안을 한 문장으로 말씀드리면."},
+    {weak:"I hope you'll consider it maybe.",strong:"I'm asking for your decision today.",ko:"오늘 결정해 주시길 요청드립니다."},
+    {weak:"It could save some money perhaps.",strong:"This saves us $40k a year.",ko:"이것은 연간 4만 달러를 절감합니다."},
+    {weak:"Sorry, let me back up.",strong:"Let me give the key context.",ko:"핵심 배경을 말씀드리겠습니다."},
+    {weak:"That's roughly my pitch.",strong:"That's the pitch — shall we move ahead?",ko:"이상이 제안입니다 — 진행할까요?"},
+  ],
+  [
+    {weak:"I'm not sure it's worth it, but…",strong:"The return justifies the cost.",ko:"수익이 비용을 정당화합니다."},
+    {weak:"Maybe customers might like it?",strong:"Customers asked for this directly.",ko:"고객들이 직접 이것을 요청했습니다."},
+    {weak:"I could be overthinking it.",strong:"I've pressure-tested this.",ko:"이것을 충분히 검증했습니다."},
+    {weak:"Sorry if I'm repeating myself.",strong:"To reinforce the key point:",ko:"핵심을 다시 강조하면:"},
+    {weak:"Hopefully that convinces you?",strong:"What would it take to get a yes?",ko:"승낙을 얻으려면 무엇이 필요할까요?"},
+  ],
+  [
+    {weak:"Maybe we could try persuading them?",strong:"Here's how we win them over.",ko:"그들을 설득할 방법은 이렇습니다."},
+    {weak:"I think the risk is kind of low.",strong:"The downside is limited and reversible.",ko:"손실은 제한적이고 되돌릴 수 있습니다."},
+    {weak:"It sort of aligns with our goals.",strong:"This directly serves our top goal.",ko:"이것은 우리의 최우선 목표에 직접 부합합니다."},
+    {weak:"Sorry to push, but…",strong:"I'll be direct:",ko:"솔직하게 말씀드리겠습니다:"},
+    {weak:"Let me know your thoughts maybe.",strong:"Can I get your decision by EOD?",ko:"오늘 중으로 결정해 주실 수 있나요?"},
+  ],
+  [
+    {weak:"They challenged me and I froze.",strong:"That's a fair question — here's the data.",ko:"좋은 질문입니다 — 데이터를 보시죠."},
+    {weak:"Maybe my numbers are off?",strong:"I stand by these numbers.",ko:"이 수치에 자신 있습니다."},
+    {weak:"I guess we could delay it.",strong:"Delaying costs us the quarter.",ko:"지연하면 이번 분기를 잃습니다."},
+    {weak:"Sorry, I'll be quick.",strong:"Two minutes — here's the case.",ko:"2분만요 — 핵심은 이렇습니다."},
+    {weak:"I think it's a good plan, right?",strong:"This is the strongest option on the table.",ko:"이것이 현재 가장 강력한 선택지입니다."},
+  ],
+  [
+    {weak:"Maybe we should ask the client?",strong:"Let's lead with a clear recommendation.",ko:"명확한 권고안으로 먼저 제시합시다."},
+    {weak:"I'm worried they'll say no.",strong:"If they hesitate, here's our fallback.",ko:"그들이 주저하면, 대안은 이렇습니다."},
+    {weak:"It might be too ambitious maybe.",strong:"It's ambitious — and achievable.",ko:"야심차지만 — 달성 가능합니다."},
+    {weak:"Sorry, that came out wrong.",strong:"Let me put that more precisely.",ko:"더 정확히 말씀드리겠습니다."},
+    {weak:"I hope this lands okay.",strong:"Here's the one thing to remember.",ko:"기억하실 핵심은 이 한 가지입니다."},
+  ],
+  [
+    {weak:"So yeah, that's my presentation.",strong:"To close: three takeaways and one ask.",ko:"마무리: 세 가지 요점과 한 가지 요청입니다."},
+    {weak:"I guess I'll stop there.",strong:"Here's what I need from this room.",ko:"이 자리에서 제가 필요로 하는 것은 이것입니다."},
+    {weak:"Thanks for listening, sorry.",strong:"Thank you — let's discuss next steps.",ko:"감사합니다 — 다음 단계를 논의합시다."},
+    {weak:"Any questions, maybe?",strong:"I'll take your questions now.",ko:"이제 질문을 받겠습니다."},
+    {weak:"I think it went sort of okay.",strong:"We're aligned. Let's execute.",ko:"의견이 모였습니다. 실행합시다."},
+  ],
+  // Week 4 — Leadership
+  [
+    {weak:"You did it wrong.",strong:"Let's look at a stronger approach for next time.",ko:"다음엔 더 나은 방식을 함께 살펴봅시다."},
+    {weak:"I was hoping for maybe a raise?",strong:"Based on my results, I'm asking for X.",ko:"제 성과를 근거로 X를 요청드립니다."},
+    {weak:"I'm not really a leader type…",strong:"I led the team through three launches.",ko:"저는 세 번의 출시를 팀과 함께 이끌었습니다."},
+    {weak:"Whatever works for everyone…",strong:"Here's my proposal — push back if needed.",ko:"제 제안입니다 — 이견 있으면 말씀하세요."},
+    {weak:"Sorry for the long email.",strong:"Summary first, details below.",ko:"요약을 먼저, 세부 사항은 아래에."},
+  ],
+  [
+    {weak:"You kind of missed the deadline.",strong:"The deadline slipped — what got in the way?",ko:"마감이 늦어졌는데 — 무엇이 걸림돌이었나요?"},
+    {weak:"Maybe you could do better?",strong:"Here's one specific thing to improve.",ko:"개선할 구체적인 한 가지는 이것입니다."},
+    {weak:"I guess you did fine.",strong:"You did this really well — here's why.",ko:"이건 정말 잘하셨습니다 — 이유는 이렇습니다."},
+    {weak:"Sorry to give feedback.",strong:"I have some feedback that'll help you.",ko:"도움이 될 피드백을 드리겠습니다."},
+    {weak:"Try to fix it I guess.",strong:"Let's agree on the fix and a date.",ko:"해결 방법과 기한을 함께 정합시다."},
+  ],
+  [
+    {weak:"Tell me about yourself, um…",strong:"In ninety seconds: my story and my edge.",ko:"90초로: 제 이야기와 강점입니다."},
+    {weak:"I think my strength is maybe…",strong:"My strength is X — here's proof.",ko:"제 강점은 X입니다 — 증거는 이렇습니다."},
+    {weak:"I guess I'd be okay at it.",strong:"I'm ready for this role. Here's why.",ko:"저는 이 역할에 준비되어 있습니다. 이유는 이렇습니다."},
+    {weak:"Sorry, that's a hard question.",strong:"Great question — let me think aloud.",ko:"좋은 질문입니다 — 생각을 정리해 보겠습니다."},
+    {weak:"I hope I'm a good fit maybe.",strong:"Here's the value I'd bring on day one.",ko:"입사 첫날부터 제가 더할 가치는 이렇습니다."},
+  ],
+  [
+    {weak:"Can someone maybe do this task?",strong:"Sun, I'd like you to own this by Friday.",ko:"선, 이 일을 금요일까지 맡아 주세요."},
+    {weak:"I'll just do it myself I guess.",strong:"I'm delegating this — here's the goal.",ko:"이 일을 위임합니다 — 목표는 이렇습니다."},
+    {weak:"Sorry to give you more work.",strong:"This is a growth opportunity for you.",ko:"이것은 당신에게 성장의 기회입니다."},
+    {weak:"Let me know if it's too much.",strong:"Tell me what support you need.",ko:"어떤 지원이 필요한지 말씀해 주세요."},
+    {weak:"Hopefully that's clear enough?",strong:"What, why, and by when — all clear?",ko:"무엇을, 왜, 언제까지 — 모두 명확한가요?"},
+  ],
+  [
+    {weak:"I think I deserve more money?",strong:"My work has grown revenue 15%. Let's talk pay.",ko:"제 성과로 매출이 15% 늘었습니다. 보상을 논의하고 싶습니다."},
+    {weak:"Maybe I've done enough for it.",strong:"Here's the case for a raise, in numbers.",ko:"수치로 본 인상 근거는 이렇습니다."},
+    {weak:"Sorry to bring up money.",strong:"I'd like to discuss compensation.",ko:"보상에 대해 논의하고 싶습니다."},
+    {weak:"I'd be grateful for anything.",strong:"I'm asking for a 10% increase.",ko:"10% 인상을 요청드립니다."},
+    {weak:"No worries if it's a no.",strong:"If not now, what's the path to it?",ko:"지금이 아니라면, 어떻게 하면 가능할까요?"},
+  ],
+  [
+    {weak:"My leadership style is kind of chill.",strong:"I lead by setting clear goals and trusting people.",ko:"저는 명확한 목표를 세우고 사람을 신뢰하며 이끕니다."},
+    {weak:"I guess I try to be nice?",strong:"I give direct feedback and real support.",ko:"저는 솔직한 피드백과 실질적 지원을 합니다."},
+    {weak:"I don't really have failures…",strong:"Here's a failure and what it taught me.",ko:"한 가지 실패와 그로부터 배운 점입니다."},
+    {weak:"Sorry, that's personal maybe.",strong:"Happy to share — here's a real example.",ko:"기꺼이 말씀드리죠 — 실제 사례입니다."},
+    {weak:"Hopefully that answers it?",strong:"Does that fully answer your question?",ko:"질문에 충분히 답이 되었을까요?"},
+  ],
+  [
+    {weak:"Day 28 already, kind of crazy.",strong:"Twenty-eight days in — here's how far I've come.",ko:"28일째 — 제가 얼마나 발전했는지 말씀드립니다."},
+    {weak:"I guess I improved a little?",strong:"I speak up first now, not last.",ko:"이제 저는 맨 마지막이 아니라 가장 먼저 말합니다."},
+    {weak:"Sorry, I'm not great yet.",strong:"I'm clearer and more confident than on Day 1.",ko:"첫날보다 더 명확하고 자신감 있습니다."},
+    {weak:"Maybe I'll keep practicing.",strong:"I'll use one new phrase in every meeting.",ko:"매 회의마다 새 표현을 하나씩 쓰겠습니다."},
+    {weak:"Thanks, that's all I think.",strong:"This is the start, not the finish.",ko:"이것은 끝이 아니라 시작입니다."},
+  ],
+];
+
+
+// WARMUPS: tongue twisters with Korean note
+const WARMUPS = [
+  ["Strategic statistics suggest sustainable solutions.","'s' 발음 연습 - 전략적 통계는 지속 가능한 해결책을 시사한다"],
+  ["Particularly proper preparation prevents poor performance.","'p' 발음 연습 - 적절한 준비가 부진한 성과를 막는다"],
+  ["Critical clients clearly criticize careless quarterly claims.","'cl/cr' 발음 연습 - 중요한 고객은 부주의한 분기 주장을 분명히 비판한다"],
+  ["The leadership literally lengthened the lengthy legal logistics list.","'l' 발음 연습 - 경영진이 긴 법무 물류 목록을 더 늘렸다"],
+  ["Six successful CEOs sized seven simple synergy strategies.","'s' 발음 연습 - 여섯 명의 성공한 CEO가 일곱 가지 시너지 전략을 가늠했다"],
+  ["Brand-new branding broadens broad brand boundaries.","'br' 발음 연습 - 새로운 브랜딩이 넓은 브랜드 경계를 확장한다"],
+  ["We were wary of weary workers who weren't well aware.","'w' 발음 연습 - 우리는 잘 알지 못하는 지친 직원들을 경계했다"],
+];
+
+// QUESTIONS: pause killer prompts [en, ko] × 4 weeks × 7
+const QUESTIONS = [
+  [
+    ["Introduce yourself in two sentences — role and what you're great at.","두 문장으로 자기소개 — 역할과 잘하는 것"],
+    ["What's one thing you accomplished this month?","이번 달에 이룬 것 한 가지는?"],
+    ["A colleague asks 'How's your project going?' — answer.","동료가 '프로젝트 어때요?'라고 물으면 — 답해보세요"],
+    ["Describe your job to someone outside your industry.","업계 밖 사람에게 당신의 일을 설명해보세요"],
+    ["Someone senior joins the elevator. Make small talk.","상사가 엘리베이터에 탑니다. 가벼운 대화를 해보세요"],
+    ["What do you enjoy most about your work?","일에서 가장 즐거운 점은?"],
+    ["What's a skill you're building right now?","지금 키우고 있는 역량은?"],
+  ],
+  [
+    ["Give a 30-second status update on any project.","아무 프로젝트나 30초 현황 보고를 해보세요"],
+    ["Your manager asks: 'Any blockers?' — answer honestly.","상사가 '걸림돌 있어요?'라고 물으면 — 솔직히 답해보세요"],
+    ["Disagree with this: 'We should cut the budget by half.'","'예산을 절반으로 줄이자'에 반대해보세요"],
+    ["Ask a clarifying question about a vague task.","애매한 업무에 대해 명확히 하는 질문을 해보세요"],
+    ["Summarize a meeting's outcome in three sentences.","회의 결과를 세 문장으로 요약해보세요"],
+    ["A teammate's idea has a flaw. Point it out kindly.","동료 아이디어의 결함을 정중히 지적해보세요"],
+    ["You missed a deadline. Explain and propose a fix.","마감을 놓쳤습니다. 설명하고 해결책을 제안해보세요"],
+  ],
+  [
+    ["Pitch an idea you believe in — 45 seconds.","믿는 아이디어를 45초간 제안해보세요"],
+    ["A client says 'It's too expensive.' Respond.","고객이 '너무 비싸요'라고 하면 — 대응해보세요"],
+    ["Convince a skeptic that your project deserves priority.","회의적인 사람에게 프로젝트 우선순위를 설득해보세요"],
+    ["Open a presentation with a strong first line.","강한 첫 문장으로 발표를 시작해보세요"],
+    ["Someone challenges your data in front of others.","누군가 사람들 앞에서 당신의 데이터를 문제 삼습니다"],
+    ["Explain a complex idea using one simple analogy.","복잡한 개념을 간단한 비유로 설명해보세요"],
+    ["Close a meeting with clear next steps and owners.","명확한 다음 단계와 담당자로 회의를 마무리해보세요"],
+  ],
+  [
+    ["Answer: 'Tell me about yourself' — interview version.","'자기소개 해주세요' — 면접 버전으로 답해보세요"],
+    ["Give a junior colleague constructive feedback.","후배에게 건설적인 피드백을 해보세요"],
+    ["Answer: 'What's your greatest strength?' with an example.","'가장 큰 강점은?' — 사례와 함께 답해보세요"],
+    ["Ask for a raise. State your case in under a minute.","연봉 인상을 요청 — 1분 안에 근거를 말해보세요"],
+    ["Answer: 'Why should we hire you?'","'당신을 왜 채용해야 하나요?'에 답해보세요"],
+    ["Delegate a task clearly: what, why, by when.","업무를 명확히 위임 — 무엇을, 왜, 언제까지"],
+    ["Describe your leadership style with one concrete story.","구체적 사례로 리더십 스타일을 설명해보세요"],
+  ],
+];
+
+// TOPICS: free talk prompts [en, ko] × 4 weeks × 7
+const TOPICS = [
+  [
+    ["Walk through your morning routine as if onboarding someone.","신입에게 알려주듯 아침 루틴을 설명해보세요"],
+    ["Describe your dream role five years from now.","5년 후 꿈꾸는 직무를 묘사해보세요"],
+    ["Tell the story of how you got into your field.","당신의 분야에 들어온 과정을 이야기해보세요"],
+    ["Describe your company to an investor in plain language.","투자자에게 쉬운 말로 회사를 설명해보세요"],
+    ["Talk about a time you felt proud at work.","일에서 자랑스러웠던 순간을 말해보세요"],
+    ["Describe your typical workday to a curious student.","학생에게 평범한 하루 일과를 설명해보세요"],
+    ["What would you change about your industry, and why?","당신의 업계에서 바꾸고 싶은 것과 이유는?"],
+  ],
+  [
+    ["Narrate your last team meeting — what went well, what didn't.","지난 팀 회의를 묘사 — 잘된 점과 아쉬운 점"],
+    ["Explain a current project: goal, status, next step.","현재 프로젝트 설명: 목표, 현황, 다음 단계"],
+    ["Describe the most useful meeting you've ever attended.","가장 유익했던 회의를 묘사해보세요"],
+    ["Talk about a disagreement at work and how it resolved.","직장 내 의견 충돌과 해결 과정을 말해보세요"],
+    ["Explain how decisions get made on your team.","팀에서 의사 결정이 이뤄지는 방식을 설명해보세요"],
+    ["Describe a process at work that should be simpler.","더 간단해야 할 업무 절차를 묘사해보세요"],
+    ["Talk about giving an update when the news isn't good.","나쁜 소식을 전할 때를 이야기해보세요"],
+  ],
+  [
+    ["Pitch your favorite product as if you invented it.","좋아하는 제품을 직접 만든 것처럼 홍보해보세요"],
+    ["Tell a story about changing someone's mind.","누군가의 마음을 바꾼 이야기를 해보세요"],
+    ["Present one slide that exists only in your head: 'Why this matters.'","머릿속 슬라이드 한 장: '왜 중요한가'를 발표해보세요"],
+    ["Describe a negotiation you've experienced.","경험한 협상을 묘사해보세요"],
+    ["Sell your city as the next big business hub.","당신의 도시를 차세대 비즈니스 허브로 홍보해보세요"],
+    ["Explain a trend in your industry and your take on it.","업계 트렌드와 그에 대한 견해를 설명해보세요"],
+    ["Persuade your past self to make one different career choice.","과거의 자신에게 다른 진로 선택을 설득해보세요"],
+  ],
+  [
+    ["Describe the best manager you've ever had.","겪어본 최고의 상사를 묘사해보세요"],
+    ["Mock interview: your career story in 90 seconds.","모의 면접: 90초로 커리어 이야기를 해보세요"],
+    ["Talk about a failure and what it taught you.","실패와 그로부터 배운 점을 말해보세요"],
+    ["Describe how you'd run your first team meeting as a manager.","관리자로서 첫 팀 회의를 어떻게 진행할지 묘사해보세요"],
+    ["What does 'executive presence' mean to you?","'임원다운 존재감'은 당신에게 무엇인가요?"],
+    ["Give a 1-minute toast at your own promotion party.","자신의 승진 파티에서 1분 건배사를 해보세요"],
+    ["Day 28: tell future-you how speaking feels now vs. Day 1.","28일차: 첫날과 비교해 말하기가 어떤지 미래의 나에게 말해보세요"],
+  ],
+];
+
+
     const { useState, useEffect, useRef } = React;
-    const C = { ink: "#1B1633", indigo: "#5B4FE9", indigoDeep: "#3E34B8", lilac: "#EEEcFD", mist: "#F7F6FE", green: "#2EB67D", rose: "#E85D75", grayText: "#6B6685" };
+    const C = { ink: "#1B1633", indigo: "#5B4FE9", indigoDeep: "#3E34B8", lilac: "#EEEcFD", mist: "#F7F6FE", green: "#2EB67D", rose: "#E85D75", grayText: "#6B6685", koBlue: "#2C7BE5" };
     const store = {
-      async get(k) { const v = localStorage.getItem(k); return v == null ? null : { key: k, value: v }; },
-      async set(k, v) { localStorage.setItem(k, v); return { key: k, value: v }; },
-      async delete(k) { localStorage.removeItem(k); return { key: k, deleted: true }; }
+      async get(k) { try { const v = localStorage.getItem(k); return v == null ? null : { key: k, value: v }; } catch { return null; } },
+      async set(k, v) { try { localStorage.setItem(k, v); } catch {} return { key: k, value: v }; },
+      async delete(k) { try { localStorage.removeItem(k); } catch {} return { key: k, deleted: true }; }
     };
     const AI_URL = '/api/claude';
-    
+
     function speak(text, rate = 1) {
       if (typeof speechSynthesis === "undefined") return;
       speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text.replace(/[❌✅]/g, ""));
+      const u = new SpeechSynthesisUtterance(String(text).replace(/[❌✅]/g, ""));
       u.lang = "en-US"; u.rate = rate;
       const vs = speechSynthesis.getVoices();
       const v = vs.find(v => v.lang === "en-US" && /female|samantha|aria/i.test(v.name)) || vs.find(v => v.lang === "en-US");
@@ -33,10 +831,10 @@
       speechSynthesis.speak(u);
     }
 
-    function analyzeSpeech(transcript) {
-      const words = transcript.trim().split(/\s+/).filter(Boolean);
-      const fillers = (transcript.match(/\b(um+|uh+|erm+|you know|so yeah)\b/gi) || []).length;
-      const hedges = (transcript.match(/\b(maybe|just|sorry|i think|i guess|kind of|sort of|probably)\b/gi) || []).length;
+    function analyzeSpeech(t) {
+      const words = t.trim().split(/\s+/).filter(Boolean);
+      const fillers = (t.match(/\b(um+|uh+|erm+|you know|so yeah)\b/gi) || []).length;
+      const hedges = (t.match(/\b(maybe|just|sorry|i think|i guess|kind of|sort of|probably)\b/gi) || []).length;
       return { words: words.length, fillers, hedges };
     }
 
@@ -47,21 +845,27 @@
       { name: "Leadership", desc: "Feedback, interviews, negotiating, executive tone" },
     ];
 
-    const WARMUPS = ["Strategic statistics suggest sustainable solutions.", "Particularly proper preparation prevents poor performance.", "Critical clients clearly criticize careless quarterly claims.", "The leadership literally lengthened the lengthy legal logistics list.", "Six successful CEOs sized seven simple synergy strategies.", "Brand-new branding broadens broad brand boundaries.", "We were wary of weary workers who weren't well aware."];
+    const VOCAB_DAYS_ALL = VOCAB_DAYS.concat(VOCAB_DAYS_2);
+    const POWER_DAYS = POWER_DAYS_1.concat(POWER_DAYS_2);
 
-    const PV = [["bring up","mention a topic","I'd like to bring up the budget before we finish."],["follow up","check on something later","I'll follow up with the client tomorrow morning."],["set up","arrange / organize","Can you set up a call with the design team?"],["carry out","perform / complete","We carried out the survey across three markets."],["figure out","find the answer","Let's figure out why sales dropped in May."],["point out","draw attention to","She pointed out a risk nobody had noticed."],["put off","postpone","We had to put off the launch until Q3."],["take on","accept work","I can take on the new account this quarter."],["take over","assume control","Maria will take over the project next month."],["run by","ask for opinion","Let me run this idea by you before the meeting."],["sign off on","give approval","The director signed off on the new design."],["fill in","give missing info","Can you fill me in on what I missed?"],["fill out","complete a form","Please fill out the expense report by Friday."],["hand in","submit","I handed in the proposal an hour early."],["hand over","give responsibility","I'm handing over my tasks before vacation."],["look into","investigate","We're looking into the billing issue right now."],["look over","review quickly","Could you look over my slides before I present?"],["go over","review in detail","Let's go over the numbers one more time."],["come up with","create an idea","She came up with a brilliant cost-saving plan."],["catch up on","do delayed work","I spent Monday catching up on emails."],["deal with","handle a problem","I'll deal with the supplier complaint today."],["work out","find a solution","Don't worry — we'll work out the details."],["sort out","fix / organize","IT sorted out the server problem overnight."],["reach out","contact someone","Feel free to reach out if you have questions."],["get back to","respond later","I'll get back to you by end of day."],["cut back on","reduce","We're cutting back on travel costs this year."],["scale up","grow / increase","The startup scaled up to fifty employees."],["wrap up","finish","Let's wrap up the meeting with action items."],["kick off","start","We kick off the campaign on Monday."],["lay out","explain clearly","He laid out the plan step by step."]];
-
-    const VOCAB = [["leverage","use to max advantage","We can leverage our brand to enter new markets."],["stakeholder","anyone affected","Update all stakeholders before the launch."],["milestone","key progress point","We hit the first milestone two weeks early."],["deliverable","promised piece of work","The final deliverable is due on the 15th."],["benchmark","standard to compare","Our response time beats the industry benchmark."],["scalable","able to grow efficiently","The platform is scalable to millions of users."],["bandwidth","capacity to take on work","I don't have bandwidth for another project."],["alignment","agreement on direction","We need alignment between sales and product."],["traction","early signs of success","The app is gaining traction with students."],["churn","customers leaving","Churn dropped 5 percent after the redesign."],["retention","keeping customers","Retention is cheaper than acquisition."],["margin","profit after costs","Hardware has thin margins."],["overhead","fixed running costs","Remote work cut our overhead in half."],["revenue","total income","Revenue grew 20 percent year over year."],["forecast","prediction of results","The Q3 forecast looks conservative."],["pipeline","upcoming deals or work","Our sales pipeline is the strongest in years."],["quota","required target","She exceeded her quota three quarters straight."],["incentive","motivating reward","Bonuses are tied to team incentives."],["onboarding","integrating new people","Good onboarding cuts time to productivity."],["procurement","purchasing process","Procurement approved the new vendor."],["compliance","following rules","The report meets all compliance requirements."],["liability","legal responsibility","Unclear contracts create liability."],["equity","ownership share","Early employees received equity."],["asset","something valuable","Our brand is our biggest asset."],["acquisition","buying a company","The acquisition closed in March."],["merger","companies combining","The merger created the market leader."],["due diligence","pre-deal research","We did due diligence on the supplier."],["valuation","estimated worth","The startup raised at fifty million valuation."],["ROI","return on investment","The campaign's ROI was four to one."],["KPI","key performance indicator","Our main KPI is monthly active users."]];
-
-    const POWER = [[{weak:"Sorry, can I just say something?",strong:"I'd like to add a point here."},{weak:"I'm just the new analyst…",strong:"I'm the analyst leading this report."},{weak:"This might be a dumb question, but…",strong:"Quick question:"},{weak:"I kind of think maybe we could…",strong:"I suggest we…"},{weak:"Hopefully that makes sense?",strong:"Happy to clarify any part of that."}],[{weak:"I'm not sure, but maybe we should…",strong:"My recommendation is to…"},{weak:"Sorry to interrupt, but…",strong:"Before we move on — one important point."},{weak:"I could be wrong, but…",strong:"Based on the data, I see it differently."},{weak:"Does that make sense? Sorry if not.",strong:"What questions do you have?"},{weak:"I'll try to get it done.",strong:"I'll have it to you by Thursday."}],[{weak:"It's probably not a big deal, but…",strong:"Here's why this matters:"},{weak:"I guess we could consider…",strong:"There are two options. I recommend the first."},{weak:"Maybe it's just me, but…",strong:"I've noticed a pattern worth discussing."},{weak:"If it's not too much trouble…",strong:"I need this by Friday to stay on track."},{weak:"I think it might possibly work.",strong:"This will work. Here's the evidence."}],[{weak:"You did it wrong.",strong:"Let's look at a stronger approach for next time."},{weak:"I was hoping for maybe a raise?",strong:"Based on my results, I'm asking for X."},{weak:"I'm not really a leader type…",strong:"I led the team through three launches."},{weak:"Whatever works for everyone…",strong:"Here's my proposal — push back if needed."},{weak:"Sorry for the long email.",strong:"Summary first, details below."}]];
-
-    const QUESTIONS = [["Introduce yourself in two sentences — role and what you're great at.","What's one thing you accomplished this month?","A colleague asks 'How's your project going?' — answer.","Describe your job to someone outside your industry.","Someone senior joins the elevator. Make small talk.","What do you enjoy most about your work?","What's a skill you're building right now?"],["Give a 30-second status update on any project.","Your manager asks: 'Any blockers?' — answer honestly.","Disagree with this: 'We should cut the budget by half.'","Ask a clarifying question about a vague task.","Summarize a meeting's outcome in three sentences.","A teammate's idea has a flaw. Point it out kindly.","You missed a deadline. Explain and propose a fix."],["Pitch an idea you believe in — 45 seconds.","A client says 'It's too expensive.' Respond.","Convince a skeptic that your project deserves priority.","Open a presentation with a strong first line.","Someone challenges your data in front of others.","Explain a complex idea using one simple analogy.","Close a meeting with clear next steps and owners."],["Answer: 'Tell me about yourself' — interview version.","Give a junior colleague constructive feedback.","Answer: 'What's your greatest strength?' with an example.","Ask for a raise. State your case in under a minute.","Answer: 'Why should we hire you?'","Delegate a task clearly: what, why, by when.","Describe your leadership style with one concrete story."]];
-
-    const TOPICS = [["Walk through your morning routine as if onboarding someone.","Describe your dream role five years from now.","Tell the story of how you got into your field.","Describe your company to an investor in plain language.","Talk about a time you felt proud at work.","Describe your typical workday to a curious student.","What would you change about your industry, and why?"],["Narrate your last team meeting — what went well, what didn't.","Explain a current project: goal, status, next step.","Describe the most useful meeting you've ever attended.","Talk about a disagreement at work and how it resolved.","Explain how decisions get made on your team.","Describe a process at work that should be simpler.","Talk about giving an update when the news isn't good."],["Pitch your favorite product as if you invented it.","Tell a story about changing someone's mind.","Present one slide that exists only in your head: 'Why this matters.'","Describe a negotiation you've experienced.","Sell your city as the next big business hub.","Explain a trend in your industry and your take on it.","Persuade your past self to make one different career choice."],["Describe the best manager you've ever had — what made them great.","Mock interview: your career story in 90 seconds.","Talk about a failure and what it taught you.","Describe how you'd run your first team meeting as a new manager.","What does 'executive presence' mean to you?","Give a 1-minute toast at your own promotion party.","Day 28: tell future-you how speaking feels now vs. Day 1."]];
-
-    const SKILLS = [{name:"Negotiation",emoji:"🤝",frame:"Anchor high → justify with data → trade, don't concede.",phrases:["Based on market data, I'm starting at this number.","If you can move on price, we can move on timeline.","Help me understand the constraint on your side.","That doesn't work for me — here's what does.","Let's park price for a moment and align on scope.","I'm prepared to walk away if we can't reach that.","What would make this a win-win for both of us?","Let me take this back and confirm by Friday."]},{name:"Presentation",emoji:"📊",frame:"Hook → three points → call to action. Never start with 'um, so, today I…'",phrases:["Let me start with the number that matters most.","There are three things you need to know.","So what does this mean for us?","Let's zoom out for a second.","I'll pause here — what questions do you have?","Great question — the short answer is yes.","To recap: one, two, three.","Here's what I need from this room today."]},{name:"Small talk",emoji:"🥂",frame:"Observe → relate → ask an open question. Exit warmly with a next step.",phrases:["How's your week shaping up?","I heard your team just shipped the new release — congrats!","What are you working on these days?","I don't think we've met — I'm leading the analytics side.","How did you get into this field?","What did you think of the keynote?","Any plans for the long weekend?","It was great catching up — let's grab coffee soon."]}];
-
-    const SCENARIOS = [{id:"salary",emoji:"💰",title:"Salary negotiation",desc:"Your manager is hesitant. Make your case.",open:"So… you wanted to talk about compensation? I'll be honest — budgets are tight this year. What did you have in mind?"},{id:"price",emoji:"🧾",title:"Client: 'Too expensive'",desc:"Defend your price without caving.",open:"I'll be straight with you — we love the proposal, but the price is 30% above our budget. Can you do something about that?"},{id:"interview",emoji:"🎤",title:"Job interview",desc:"Senior role. Sell yourself.",open:"Thanks for coming in. I've read your CV — impressive. Let's start simple: tell me about yourself."},{id:"network",emoji:"🥂",title:"Networking event",desc:"Conference small talk with a stranger.",open:"Quite a crowd today, isn't it? I don't think we've met — I'm Dana, I run partnerships at a fintech startup."},{id:"exec",emoji:"📈",title:"Exec Q&A",desc:"A skeptical VP grills your proposal.",open:"You have five minutes. I've seen ten proposals like this fail. Why is yours different?"},{id:"deadline",emoji:"😬",title:"Impossible deadline",desc:"Push back without saying a flat no.",open:"I need the full report by Friday. I know it's tight, but the board meets Monday. You can make that happen, right?"}];
+    // Phrasal verbs: Day 1 = 10 new; Days 2-27 = 5 new + 5 review; Day 28 = grand review
+    function pvForDay(day) {
+      const N = PV.length;
+      const out = [];
+      if (day <= 1) {
+        for (let i = 0; i < 10; i++) out.push({ item: PV[i % N], tag: "NEW" });
+        return out;
+      }
+      if (day >= 28) {
+        for (let i = 0; i < 10; i++) out.push({ item: PV[Math.floor(i * (N - 1) / 9) % N], tag: "REVIEW" });
+        return out;
+      }
+      const newStart = 10 + (day - 2) * 5;
+      for (let i = 0; i < 5; i++) out.push({ item: PV[(newStart + i) % N], tag: "NEW" });
+      const seen = Math.max(1, Math.min(newStart, N));
+      for (let i = 0; i < 5; i++) out.push({ item: PV[((day * 7) + i * 13) % seen], tag: "REVIEW" });
+      return out;
+    }
 
     function Waveform({ active, color = C.indigo }) {
       return React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "center", gap: 3, height: 56 } },
@@ -69,310 +873,297 @@
         React.createElement("style", null, `@keyframes wv{from{height:8px}to{height:48px}}`)
       );
     }
-
     function Pill({ children, color = C.indigoDeep, bg = C.lilac }) {
       return React.createElement("span", { style: { fontSize: 12, fontWeight: 600, color, background: bg, borderRadius: 999, padding: "5px 12px" } }, children);
     }
-
     function Button({ children, onClick, secondary, disabled, style }) {
-      return React.createElement("button", { onClick, disabled, style: { width: "100%", border: "none", cursor: disabled ? "default" : "pointer", background: secondary ? "white" : `linear-gradient(135deg, ${C.indigo}, ${C.indigoDeep})`, color: secondary ? C.indigoDeep : "white", boxShadow: secondary ? `inset 0 0 0 2px ${C.lilac}` : "0 8px 24px rgba(91,79,233,.35)", borderRadius: 16, padding: "16px 20px", fontSize: 17, fontWeight: 700, opacity: disabled ? 0.5 : 1, ...style } }, children);
+      return React.createElement("button", { onClick, disabled, style: { width: "100%", border: "none", cursor: disabled ? "default" : "pointer", background: secondary ? "white" : `linear-gradient(135deg, ${C.indigo}, ${C.indigoDeep})`, color: secondary ? C.indigoDeep : "white", boxShadow: secondary ? `inset 0 0 0 2px ${C.lilac}` : "0 8px 24px rgba(91,79,233,.35)", borderRadius: 16, padding: "15px 18px", fontSize: 16, fontWeight: 700, opacity: disabled ? 0.45 : 1, ...style } }, children);
     }
-
     function ListenBtn({ text, rate = 1, small }) {
-      return React.createElement("button", { onClick: () => speak(text, rate), style: { border: `1.5px solid ${C.lilac}`, background: "white", color: C.indigoDeep, borderRadius: 99, padding: small ? "4px 10px" : "7px 14px", fontSize: small ? 12 : 13.5, fontWeight: 700, cursor: "pointer", fontFamily: "system-ui" } }, rate < 1 ? "🔊 Slow" : "🔊 Listen");
+      return React.createElement("button", { onClick: () => speak(text, rate), style: { border: `1.5px solid ${C.lilac}`, background: "white", color: C.indigoDeep, borderRadius: 99, padding: small ? "4px 9px" : "7px 14px", fontSize: small ? 11.5 : 13.5, fontWeight: 700, cursor: "pointer", fontFamily: "system-ui", whiteSpace: "nowrap" } }, rate < 1 ? "🔊 Slow" : "🔊 Listen");
     }
-
     function H({ size = 28, children, style }) {
       return React.createElement("h2", { style: { fontFamily: "'Bricolage Grotesque', system-ui", fontWeight: 800, fontSize: size, color: C.ink, letterSpacing: -0.5, margin: 0, lineHeight: 1.15, ...style } }, children);
+    }
+    function KO({ children }) {
+      return React.createElement("div", { style: { fontSize: 13, color: C.koBlue, marginTop: 2, fontWeight: 600 } }, children);
     }
 
     function Landing({ onStart }) {
       return React.createElement("div", { style: { textAlign: "center", paddingTop: 32 } },
         React.createElement("div", { style: { fontFamily: "'Bricolage Grotesque', system-ui", fontWeight: 800, fontSize: 22, color: C.indigoDeep, letterSpacing: 1 } }, "SAYSO ", React.createElement("span", { style: { fontSize: 12, color: C.grayText } }, "BUSINESS")),
         React.createElement("div", { style: { display: "flex", gap: 8, justifyContent: "center", marginTop: 18, flexWrap: "wrap" } },
-          React.createElement(Pill, {}, "🎯 28 days"),
-          React.createElement(Pill, {}, "🔊 Voice coach"),
-          React.createElement(Pill, {}, "💬 AI partner")
+          React.createElement(Pill, {}, "🎯 28 days"), React.createElement(Pill, {}, "🇰🇷 한국어 지원"), React.createElement(Pill, {}, "💬 AI coach")
         ),
-        React.createElement(H, { size: 37, style: { marginTop: 26 } }, "Speak like the most ", React.createElement("span", { style: { color: C.indigo } }, "confident person"), " in the meeting."),
-        React.createElement("p", { style: { color: C.grayText, fontSize: 16.5, lineHeight: 1.55, margin: "16px auto 0", maxWidth: 420 } }, "10 phrasal verbs + 3 vocab + power phrases + AI coach + role-play scenarios + skill kits. 15 min daily for 28 days."),
-        React.createElement("div", { style: { margin: "24px 0 6px" } }, React.createElement(Waveform, { active: true })),
-        React.createElement("p", { style: { fontSize: 13, color: C.grayText, marginBottom: 22 } }, "Your voice, getting steadier every day"),
-        React.createElement(Button, { onClick: () => onStart() }, "Start Day 1 →"),
-        React.createElement("p", { style: { fontSize: 12, color: C.grayText, marginTop: 14 } }, "No account needed · full app offline · saves progress")
+        React.createElement(H, { size: 36, style: { marginTop: 26 } }, "Speak like the most ", React.createElement("span", { style: { color: C.indigo } }, "confident person"), " in the meeting."),
+        React.createElement("p", { style: { color: C.grayText, fontSize: 16, lineHeight: 1.55, margin: "16px auto 0", maxWidth: 420 } }, "Every day: 10 phrasal verbs + 10 themed business words + 5 power phrases + speaking drills with AI feedback. Korean translations throughout."),
+        React.createElement("p", { style: { color: C.koBlue, fontSize: 14, fontWeight: 600, margin: "10px auto 0", maxWidth: 420, lineHeight: 1.5 } }, "매일 구동사 10개, 주제별 비즈니스 단어 10개, 파워 표현 5개와 말하기 연습. 모든 설명에 한국어 번역 제공."),
+        React.createElement("div", { style: { margin: "22px 0 6px" } }, React.createElement(Waveform, { active: true })),
+        React.createElement(Button, { onClick: onStart, style: { marginTop: 8 } }, "Start Day 1 →"),
+        React.createElement("p", { style: { fontSize: 12, color: C.grayText, marginTop: 14 } }, "No account needed · saves your progress")
       );
     }
 
-    function Dashboard({ day, completed, streak, doneToday, onTrain, onReset }) {
+    function Dashboard({ day, setDay, completed, streak, onTrain, onReset }) {
       const week = WEEKS[Math.min(Math.floor((day - 1) / 7), 3)];
-      return React.createElement("div", { style: { paddingTop: 24 } },
+      const vocabDay = VOCAB_DAYS_ALL[(day - 1) % 28];
+      const isDone = completed.includes(day);
+      return React.createElement("div", { style: { paddingTop: 22 } },
         React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
           React.createElement("div", { style: { fontFamily: "'Bricolage Grotesque', system-ui", fontWeight: 800, fontSize: 19, color: C.indigoDeep, letterSpacing: 1 } }, "SAYSO"),
           React.createElement(Pill, {}, "🔥 ", streak, "-day streak")
         ),
-        React.createElement(H, { size: 28, style: { marginTop: 20 } }, "Day ", day, " of 28"),
-        React.createElement("p", { style: { color: C.grayText, fontSize: 15, marginTop: 6 } }, "This week: ", React.createElement("strong", { style: { color: C.ink } }, week.name), " — ", week.desc.toLowerCase()),
-        doneToday && React.createElement("div", { style: { background: "#EAF8F1", border: `2px solid ${C.green}`, borderRadius: 14, padding: "12px 16px", marginTop: 14, fontSize: 14, color: "#1B6B49", fontWeight: 600 } }, "✅ Today's session is done. Day ", Math.min(day + 1, 28), " unlocks tomorrow."),
-        React.createElement("div", { style: { marginTop: 16, display: "flex", flexDirection: "column", gap: 10 } },
-          doneToday ? React.createElement(Button, { secondary: true, onClick: onTrain }, "🔁 Extra practice (doesn't count twice)") : React.createElement(Button, { onClick: onTrain }, "Start Day ", day, " 🎙️")
+        // Day selector with arrows
+        React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 18, gap: 10 } },
+          React.createElement("button", { onClick: () => setDay(Math.max(1, day - 1)), disabled: day <= 1, style: { border: `2px solid ${C.lilac}`, background: "white", color: day <= 1 ? "#CFCBE6" : C.indigoDeep, borderRadius: 12, width: 44, height: 44, fontSize: 20, fontWeight: 800, cursor: day <= 1 ? "default" : "pointer" } }, "‹"),
+          React.createElement("div", { style: { textAlign: "center", flex: 1 } },
+            React.createElement(H, { size: 26 }, "Day ", day, " of 28"),
+            React.createElement("div", { style: { fontSize: 12.5, color: C.grayText, marginTop: 2 } }, isDone ? "✓ Completed — practice again anytime" : "Tap a day below to jump around freely")
+          ),
+          React.createElement("button", { onClick: () => setDay(Math.min(28, day + 1)), disabled: day >= 28, style: { border: `2px solid ${C.lilac}`, background: "white", color: day >= 28 ? "#CFCBE6" : C.indigoDeep, borderRadius: 12, width: 44, height: 44, fontSize: 20, fontWeight: 800, cursor: day >= 28 ? "default" : "pointer" } }, "›")
         ),
-        React.createElement("h3", { style: { fontFamily: "'Bricolage Grotesque', system-ui", fontWeight: 700, fontSize: 16, color: C.ink, margin: "26px 0 12px" } }, "Your challenge"),
-        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 8 } },
+        React.createElement("div", { style: { background: "white", border: `2px solid ${C.lilac}`, borderRadius: 16, padding: "14px 16px", marginTop: 14 } },
+          React.createElement("div", { style: { fontSize: 14.5, color: C.ink } }, "This week: ", React.createElement("strong", null, week.name), " — ", week.desc.toLowerCase()),
+          React.createElement("div", { style: { fontSize: 13.5, color: C.indigoDeep, marginTop: 6, fontWeight: 700 } }, "Today's vocab theme: ", vocabDay.theme),
+          React.createElement(KO, null, "오늘의 단어 주제: ", vocabDay.themeKo)
+        ),
+        React.createElement("div", { style: { marginTop: 14 } }, React.createElement(Button, { onClick: onTrain }, isDone ? "Practice Day " + day + " again 🔁" : "Start Day " + day + " 🎙️")),
+        React.createElement("h3", { style: { fontFamily: "'Bricolage Grotesque', system-ui", fontWeight: 700, fontSize: 15, color: C.ink, margin: "24px 0 10px" } }, "Your 28-day challenge"),
+        React.createElement("div", { style: { display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 7 } },
           Array.from({ length: 28 }).map((_, i) => {
-            const d = i + 1, isDone = completed.includes(d), isToday = d === day && !isDone;
-            return React.createElement("div", { key: d, style: { aspectRatio: "1", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, background: isDone ? C.indigo : isToday ? C.lilac : "white", color: isDone ? "white" : isToday ? C.indigoDeep : "#B9B5CF", border: `2px solid ${isDone || isToday ? C.indigo : "#EDEBF8"}` } }, isDone ? "✓" : d);
+            const dd = i + 1, dn = completed.includes(dd), sel = dd === day;
+            return React.createElement("button", { key: dd, onClick: () => setDay(dd), style: { aspectRatio: "1", borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, cursor: "pointer", background: dn ? C.indigo : sel ? C.lilac : "white", color: dn ? "white" : sel ? C.indigoDeep : "#B9B5CF", border: `2px solid ${dn ? C.indigo : sel ? C.indigoDeep : "#EDEBF8"}` } }, dn ? "✓" : dd);
           })
         ),
-        React.createElement("p", { style: { fontSize: 12.5, color: C.grayText, marginTop: 16, textAlign: "center" } }, "10 phrasal verbs + 3 vocab + power phrases daily = 140 verbs & 84 words by Day 28 ☕"),
+        React.createElement("p", { style: { fontSize: 12, color: C.grayText, marginTop: 14, textAlign: "center", lineHeight: 1.5 } }, "By Day 28: 140 phrasal verbs + 280 business words across 28 themes ☕"),
         React.createElement("p", { style: { textAlign: "center", marginTop: 8 } }, React.createElement("button", { onClick: onReset, style: { border: "none", background: "none", color: "#B9B5CF", fontSize: 12, cursor: "pointer", textDecoration: "underline" } }, "Reset my plan & start over"))
       );
     }
 
-    function Session({ day, onNext }) {
+    function Session({ day, onFinish, onExit }) {
       const w = Math.min(Math.floor((day - 1) / 7), 3), d = (day - 1) % 7;
-      const [exIdx, setExIdx] = useState(0), [left, setLeft] = useState(90), [running, setRunning] = useState(false), [typed, setTyped] = useState("");
-      const [feedback, setFeedback] = useState(null), [feedbackLoading, setFeedbackLoading] = useState(false);
+      const [exIdx, setExIdx] = useState(0), [left, setLeft] = useState(90), [running, setRunning] = useState(false);
+      const [typed, setTyped] = useState(""), [feedback, setFeedback] = useState(null), [feedbackLoading, setFeedbackLoading] = useState(false);
       const [listening, setListening] = useState(false), [micError, setMicError] = useState("");
       const recogRef = useRef(null);
+
+      const pvList = pvForDay(day);
+      const vocabDay = VOCAB_DAYS_ALL[(day - 1) % 28];
+      const powerDay = POWER_DAYS[(day - 1) % 28];
+      const exercises = [
+        { title: "Warm-up", type: "warmup" },
+        { title: "Phrasal verbs", type: "phrasal" },
+        { title: "Business vocab", type: "vocab" },
+        { title: "Power phrases", type: "power" },
+        { title: "Pause killer", type: "pause" },
+        { title: "Free talk", type: "free" },
+      ];
+      const ex = exercises[exIdx];
+      const isSpeak = ex.type === "pause" || ex.type === "free";
       const done = left === 0;
+      const mm = Math.floor(left / 60), ss = String(left % 60).padStart(2, "0");
+
+      useEffect(() => { if (!running || left === 0) return; const t = setTimeout(() => setLeft(left - 1), 1000); return () => clearTimeout(t); }, [running, left]);
+      useEffect(() => () => { if (recogRef.current) try { recogRef.current.stop(); } catch {} }, []);
+
+      function resetExerciseState() { setLeft(90); setRunning(false); setTyped(""); setFeedback(null); setMicError(""); setListening(false); if (recogRef.current) try { recogRef.current.stop(); } catch {} }
+      function goNext() { resetExerciseState(); if (exIdx + 1 < exercises.length) setExIdx(exIdx + 1); else onFinish(); }
+      function goBack() { resetExerciseState(); if (exIdx > 0) setExIdx(exIdx - 1); }
 
       function toggleMic() {
         const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SR) {
-          setMicError("Your browser doesn't support speech recognition. Try Chrome or Edge on desktop. You can still type below.");
-          return;
-        }
-        if (listening) {
-          if (recogRef.current) recogRef.current.stop();
-          setListening(false);
-          return;
-        }
+        if (!SR) { setMicError("Speech recognition needs Chrome or Edge. You can still type below. (음성 인식은 Chrome/Edge에서 지원됩니다. 아래에 입력해도 됩니다.)"); return; }
+        if (listening) { if (recogRef.current) recogRef.current.stop(); setListening(false); return; }
         setMicError("");
-        const r = new SR();
-        r.lang = "en-US";
-        r.continuous = true;
-        r.interimResults = true;
+        const r = new SR(); r.lang = "en-US"; r.continuous = true; r.interimResults = true;
         let finalText = typed ? typed + " " : "";
-        r.onresult = (e) => {
-          let interim = "";
-          for (let i = e.resultIndex; i < e.results.length; i++) {
-            const t = e.results[i][0].transcript;
-            if (e.results[i].isFinal) finalText += t + " ";
-            else interim += t;
-          }
-          setTyped((finalText + interim).trimStart());
-        };
-        r.onerror = (e) => {
-          setListening(false);
-          if (e.error === "not-allowed" || e.error === "service-not-allowed") {
-            setMicError("Microphone permission was blocked. Click the 🔒 in your address bar → allow microphone → try again.");
-          } else if (e.error === "no-speech") {
-            setMicError("Didn't catch anything — try speaking a bit louder.");
-          } else {
-            setMicError("Mic error: " + e.error + ". You can type below instead.");
-          }
-        };
+        r.onresult = (e) => { let interim = ""; for (let i = e.resultIndex; i < e.results.length; i++) { const t = e.results[i][0].transcript; if (e.results[i].isFinal) finalText += t + " "; else interim += t; } setTyped((finalText + interim).trimStart()); };
+        r.onerror = (e) => { setListening(false); if (e.error === "not-allowed" || e.error === "service-not-allowed") setMicError("Mic blocked. Tap the 🔒 in the address bar → allow microphone. (마이크 권한을 허용해 주세요.)"); else if (e.error === "no-speech") setMicError("Didn't catch that — speak a bit louder. (소리가 들리지 않았어요.)"); else setMicError("Mic error: " + e.error + ". You can type instead."); };
         r.onend = () => setListening(false);
         recogRef.current = r;
-        try { r.start(); setListening(true); if (!running) setRunning(true); }
-        catch (err) { setMicError("Couldn't start the mic. You can type below instead."); }
+        try { r.start(); setListening(true); if (!running) setRunning(true); } catch { setMicError("Couldn't start the mic. Type below instead."); }
       }
-
-      useEffect(() => () => { if (recogRef.current) try { recogRef.current.stop(); } catch {} }, []);
-
-      useEffect(() => { if (!running || left === 0) return; const t = setTimeout(() => setLeft(left - 1), 1000); return () => clearTimeout(t); }, [running, left]);
-
-      const exercises = [
-        { title: "Warm-up", content: WARMUPS[(day - 1) % WARMUPS.length], type: "warmup" },
-        { title: "Phrasal verbs", items: PV.slice(0, 10), type: "phrasal" },
-        { title: "Business vocab", items: VOCAB.slice(0, 3), type: "vocab" },
-        { title: "Power phrases", content: POWER[w], type: "power" },
-        { title: "Pause killer", content: QUESTIONS[w][d], type: "pause" },
-        { title: "Free talk", content: TOPICS[w][d], type: "free" },
-      ];
-
-      const ex = exercises[exIdx];
-      const mm = Math.floor(left / 60), ss = String(left % 60).padStart(2, "0");
 
       async function getFeedback() {
         if (!typed.trim()) return;
         setFeedbackLoading(true);
+        const prompt = ex.type === "pause" ? QUESTIONS[w][d][0] : TOPICS[w][d][0];
         try {
-          const res = await fetch(AI_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 500, messages: [{ role: "user", content: `Speaking exercise: "${ex.content || (Array.isArray(ex.content) ? "power phrases" : "")}". She said: "${typed.trim()}". Reply with: ✨ Stronger version: [rewrite]. ✅ What worked: [one thing]. 🎯 Fix next: [1-2 tips]. Keep it under 100 words.` }] }) });
+          const res = await fetch(AI_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 600, messages: [{ role: "user", content: `A Korean professional is practising business English. Task: "${prompt}". She said: "${typed.trim()}". Reply in this format:\n✨ Stronger version: [rewrite her answer to sound confident and natural]\n✅ What worked: [one specific thing]\n🎯 Fix next: [1-2 tips]\n🇰🇷 한국어 팁: [one short tip in Korean]\nKeep the whole reply under 120 words.` }] }) });
           const data = await res.json();
-          if (!res.ok) {
-            setFeedback("⚠️ Error " + res.status + ": " + (data.error || data.detail || JSON.stringify(data)));
-            setFeedbackLoading(false);
-            return;
-          }
-          const text = data.content?.[0]?.text || ("No feedback returned. Response: " + JSON.stringify(data).slice(0, 200));
-          setFeedback(text);
-        } catch (err) {
-          setFeedback("⚠️ Connection error: " + String(err));
-        }
+          if (!res.ok) { setFeedback("⚠️ Error " + res.status + ": " + (data.error || data.detail || JSON.stringify(data))); setFeedbackLoading(false); return; }
+          setFeedback(data.content?.[0]?.text || ("No feedback. " + JSON.stringify(data).slice(0, 200)));
+        } catch (err) { setFeedback("⚠️ Connection error: " + String(err)); }
         setFeedbackLoading(false);
       }
 
-      return React.createElement("div", { style: { paddingTop: 20 } },
-        React.createElement(H, { size: 26, style: { marginTop: 14 } }, ex.title),
-        React.createElement("div", { style: { background: "white", border: `2px solid ${C.lilac}`, borderRadius: 20, padding: "20px 18px", marginTop: 16, textAlign: "center" } },
-          ex.items ? React.createElement("div", { style: { textAlign: "left", maxHeight: 300, overflowY: "auto" } },
-            ex.items.map((it, i) => React.createElement("div", { key: i, style: { padding: "9px 0", borderBottom: i < ex.items.length - 1 ? `1px solid ${C.mist}` : "none" } },
+      // Card content per type
+      let card;
+      if (ex.type === "warmup") {
+        const wu = WARMUPS[(day - 1) % 7];
+        card = React.createElement("div", { style: { textAlign: "center" } },
+          React.createElement("p", { style: { fontFamily: "'Bricolage Grotesque', system-ui", fontSize: 19, fontWeight: 700, color: C.ink, margin: 0, lineHeight: 1.4 } }, wu[0]),
+          React.createElement(KO, null, wu[1]),
+          React.createElement("div", { style: { display: "flex", gap: 8, justifyContent: "center", marginTop: 12 } }, React.createElement(ListenBtn, { text: wu[0] }), React.createElement(ListenBtn, { text: wu[0], rate: 0.7 })),
+          React.createElement("p", { style: { fontSize: 13, color: C.grayText, marginTop: 12 } }, "Say it 3× — slow, then fast.")
+        );
+      } else if (ex.type === "phrasal") {
+        card = React.createElement("div", { style: { textAlign: "left", maxHeight: 360, overflowY: "auto" } },
+          pvList.map((row, i) => React.createElement("div", { key: i, style: { padding: "10px 0", borderBottom: i < pvList.length - 1 ? `1px solid ${C.mist}` : "none" } },
+            React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 } },
+              React.createElement("span", null, React.createElement("span", { style: { fontFamily: "'Bricolage Grotesque', system-ui", fontWeight: 800, fontSize: 16.5, color: C.indigoDeep } }, row.item[0]), " ", React.createElement("span", { style: { fontSize: 10.5, fontWeight: 700, color: row.tag === "NEW" ? C.green : C.grayText, background: row.tag === "NEW" ? "#E7F7EF" : C.mist, borderRadius: 99, padding: "2px 7px", verticalAlign: "middle" } }, row.tag)),
+              React.createElement("div", { style: { display: "flex", gap: 5 } }, React.createElement(ListenBtn, { text: row.item[2], small: true }), React.createElement(ListenBtn, { text: row.item[2], rate: 0.7, small: true }))
+            ),
+            React.createElement("div", { style: { fontSize: 13, color: C.grayText, marginTop: 2 } }, "= ", row.item[1]),
+            React.createElement(KO, null, "= ", row.item[3]),
+            React.createElement("div", { style: { fontSize: 14, color: C.ink, marginTop: 3, fontStyle: "italic" } }, '"', row.item[2], '"')
+          ))
+        );
+      } else if (ex.type === "vocab") {
+        card = React.createElement("div", { style: { textAlign: "left" } },
+          React.createElement("div", { style: { textAlign: "center", marginBottom: 6 } },
+            React.createElement("div", { style: { fontWeight: 800, color: C.indigoDeep, fontSize: 15 } }, "Theme: ", vocabDay.theme),
+            React.createElement("div", { style: { fontSize: 13, color: C.koBlue, fontWeight: 600 } }, "주제: ", vocabDay.themeKo)
+          ),
+          React.createElement("div", { style: { maxHeight: 340, overflowY: "auto" } },
+            vocabDay.words.map((row, i) => React.createElement("div", { key: i, style: { padding: "10px 0", borderBottom: i < vocabDay.words.length - 1 ? `1px solid ${C.mist}` : "none" } },
               React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 } },
-                React.createElement("span", { style: { fontFamily: "'Bricolage Grotesque', system-ui", fontWeight: 800, fontSize: 17, color: C.indigoDeep } }, it[0]),
-                React.createElement("div", { style: { display: "flex", gap: 6 } }, React.createElement(ListenBtn, { text: it[2], small: true }), React.createElement(ListenBtn, { text: it[2], rate: 0.75, small: true }))
+                React.createElement("span", { style: { fontFamily: "'Bricolage Grotesque', system-ui", fontWeight: 800, fontSize: 16.5, color: C.indigoDeep } }, row[0]),
+                React.createElement("div", { style: { display: "flex", gap: 5 } }, React.createElement(ListenBtn, { text: row[0] + ". " + row[2], small: true }), React.createElement(ListenBtn, { text: row[0] + ". " + row[2], rate: 0.7, small: true }))
               ),
-              React.createElement("div", { style: { fontSize: 12.5, color: C.grayText, marginTop: 2 } }, "= ", it[1]),
-              React.createElement("div", { style: { fontSize: 14.5, color: C.ink, marginTop: 3, fontStyle: "italic" } }, '"', it[2], '"')
+              React.createElement("div", { style: { fontSize: 13, color: C.grayText, marginTop: 2 } }, "= ", row[1]),
+              React.createElement(KO, null, "= ", row[3]),
+              React.createElement("div", { style: { fontSize: 14, color: C.ink, marginTop: 3, fontStyle: "italic" } }, '"', row[2], '"')
             ))
-          ) : Array.isArray(ex.content) ? React.createElement("div", { style: { textAlign: "left" } },
-            ex.content.map((p, i) => React.createElement("div", { key: i, style: { padding: "9px 0", borderBottom: i < ex.content.length - 1 ? `1px solid ${C.mist}` : "none" } },
-              React.createElement("div", { style: { fontSize: 14, color: C.rose, textDecoration: "line-through" } }, "❌ ", p.weak),
-              React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 3, gap: 8 } },
-                React.createElement("span", { style: { fontSize: 15.5, color: C.ink, fontWeight: 700 } }, "✅ ", p.strong),
-                React.createElement(ListenBtn, { text: p.strong, small: true })
-              )
-            ))
-          ) : React.createElement("p", { style: { fontFamily: "'Bricolage Grotesque', system-ui", fontSize: 20, fontWeight: 700, color: C.ink, margin: 0 } }, ex.content),
-          React.createElement("div", { style: { marginTop: 14 } }, React.createElement(Waveform, { active: running && !done, color: done ? C.green : C.indigo })),
-          React.createElement("div", { style: { fontFamily: "'Bricolage Grotesque', system-ui", fontWeight: 800, fontSize: 36, color: done ? C.green : C.ink, marginTop: 2 } }, done ? "Done! 🎉" : `${mm}:${ss}`)
+          )
+        );
+      } else if (ex.type === "power") {
+        card = React.createElement("div", { style: { textAlign: "left" } },
+          powerDay.map((p, i) => React.createElement("div", { key: i, style: { padding: "10px 0", borderBottom: i < powerDay.length - 1 ? `1px solid ${C.mist}` : "none" } },
+            React.createElement("div", { style: { fontSize: 13.5, color: C.rose, textDecoration: "line-through" } }, "❌ ", p.weak),
+            React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 3, gap: 8 } },
+              React.createElement("span", { style: { fontSize: 15, color: C.ink, fontWeight: 700 } }, "✅ ", p.strong),
+              React.createElement(ListenBtn, { text: p.strong, small: true })
+            ),
+            React.createElement(KO, null, p.ko)
+          ))
+        );
+      } else {
+        const q = ex.type === "pause" ? QUESTIONS[w][d] : TOPICS[w][d];
+        card = React.createElement("div", { style: { textAlign: "center" } },
+          React.createElement("p", { style: { fontFamily: "'Bricolage Grotesque', system-ui", fontSize: 18.5, fontWeight: 700, color: C.ink, margin: 0, lineHeight: 1.4 } }, q[0]),
+          React.createElement(KO, null, q[1]),
+          React.createElement("div", { style: { display: "flex", gap: 8, justifyContent: "center", marginTop: 10 } }, React.createElement(ListenBtn, { text: q[0], small: true })),
+          React.createElement("div", { style: { marginTop: 12 } }, React.createElement(Waveform, { active: running && !done, color: done ? C.green : C.indigo })),
+          React.createElement("div", { style: { fontFamily: "'Bricolage Grotesque', system-ui", fontWeight: 800, fontSize: 34, color: done ? C.green : C.ink } }, done ? "Done! 🎉" : `${mm}:${ss}`)
+        );
+      }
+
+      return React.createElement("div", { style: { paddingTop: 14 } },
+        React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
+          React.createElement("button", { onClick: onExit, style: { border: "none", background: "none", color: C.grayText, fontSize: 13.5, cursor: "pointer", fontWeight: 600 } }, "‹ Exit"),
+          React.createElement("div", { style: { fontSize: 12.5, color: C.grayText, fontWeight: 600 } }, "Day ", day, " · ", exIdx + 1, "/", exercises.length)
         ),
-        (ex.type === "pause" || ex.type === "free") && React.createElement("div", { style: { background: "white", border: `2px solid ${C.indigo}`, borderRadius: 18, padding: "16px 18px", marginTop: 14 } },
-          React.createElement("div", { style: { fontWeight: 800, color: C.indigoDeep, fontFamily: "'Bricolage Grotesque', system-ui", fontSize: 15.5 } }, "🎙️ Speak or type → get AI feedback"),
-          React.createElement(Button, { onClick: toggleMic, secondary: !listening, style: { marginTop: 10, fontSize: 15, background: listening ? `linear-gradient(135deg, ${C.rose}, #C73E5A)` : undefined, color: listening ? "white" : undefined } }, listening ? "● Recording — tap to stop" : "🎤 Record my voice"),
+        React.createElement(H, { size: 25, style: { marginTop: 8 } }, ex.title),
+        React.createElement("div", { style: { background: "white", border: `2px solid ${C.lilac}`, borderRadius: 20, padding: "18px 16px", marginTop: 12 } }, card),
+        isSpeak && React.createElement("div", { style: { background: "white", border: `2px solid ${C.indigo}`, borderRadius: 18, padding: "16px", marginTop: 12 } },
+          React.createElement("div", { style: { fontWeight: 800, color: C.indigoDeep, fontFamily: "'Bricolage Grotesque', system-ui", fontSize: 15 } }, "🎙️ Speak or type → get AI feedback"),
+          React.createElement(KO, null, "말하거나 입력한 뒤 AI 피드백을 받아보세요"),
+          React.createElement(Button, { onClick: toggleMic, secondary: !listening, style: { marginTop: 10, fontSize: 15, background: listening ? `linear-gradient(135deg, ${C.rose}, #C73E5A)` : undefined, color: listening ? "white" : undefined, boxShadow: listening ? "none" : undefined } }, listening ? "● Recording — tap to stop" : "🎤 Record my voice"),
           micError && React.createElement("p", { style: { fontSize: 12.5, color: C.rose, marginTop: 8, lineHeight: 1.45 } }, micError),
-          React.createElement("textarea", { value: typed, onChange: e => setTyped(e.target.value), placeholder: "Your words appear here as you speak — or just type.", rows: 3, style: { width: "100%", boxSizing: "border-box", border: `2px solid ${listening ? C.rose : C.lilac}`, borderRadius: 12, padding: "10px 12px", fontSize: 14.5, fontFamily: "system-ui", marginTop: 10, resize: "vertical", background: C.mist } }),
+          React.createElement("textarea", { value: typed, onChange: e => setTyped(e.target.value), placeholder: "Your words appear here as you speak — or just type. (말하면 여기에 나타나거나 직접 입력하세요)", rows: 3, style: { width: "100%", boxSizing: "border-box", border: `2px solid ${listening ? C.rose : C.lilac}`, borderRadius: 12, padding: "10px 12px", fontSize: 14.5, fontFamily: "system-ui", marginTop: 10, resize: "vertical", background: C.mist } }),
           typed.trim() && React.createElement("div", { style: { display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" } },
             React.createElement(Pill, {}, analyzeSpeech(typed).words, " words"),
             React.createElement(Pill, { bg: analyzeSpeech(typed).hedges >= 2 ? "#FDECEF" : C.lilac, color: analyzeSpeech(typed).hedges >= 2 ? C.rose : C.indigoDeep }, "hedges: ", analyzeSpeech(typed).hedges),
             React.createElement(Pill, { bg: analyzeSpeech(typed).fillers >= 2 ? "#FDECEF" : C.lilac, color: analyzeSpeech(typed).fillers >= 2 ? C.rose : C.indigoDeep }, "fillers: ", analyzeSpeech(typed).fillers)
           ),
-          React.createElement(Button, { onClick: getFeedback, disabled: !typed.trim() || feedbackLoading, style: { marginTop: 10, fontSize: 15 } }, feedbackLoading ? "Coach is reading…" : "Get coach feedback 🎓"),
+          React.createElement(Button, { onClick: getFeedback, disabled: !typed.trim() || feedbackLoading, style: { marginTop: 10, fontSize: 15 } }, feedbackLoading ? "Coach is reading… 🎓" : "Get coach feedback 🎓"),
           feedback && React.createElement("div", { style: { marginTop: 12, borderTop: `1px solid ${C.mist}`, paddingTop: 10 } },
             React.createElement("p", { style: { fontSize: 14, color: C.ink, lineHeight: 1.6, whiteSpace: "pre-wrap", margin: 0 } }, feedback),
-            React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 10 } },
-              React.createElement(ListenBtn, { text: feedback.split("✅")[0].replace("✨ Stronger version:", ""), small: true }),
-              React.createElement("span", { style: { fontSize: 12, color: C.grayText, alignSelf: "center" } }, "← hear the stronger version, then say it 2×")
-            )
+            React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 10 } }, React.createElement(ListenBtn, { text: feedback.split("✅")[0].replace("✨ Stronger version:", ""), small: true }), React.createElement("span", { style: { fontSize: 12, color: C.grayText, alignSelf: "center" } }, "← hear it, then say it 2×"))
           )
         ),
-        React.createElement("p", { style: { fontSize: 13, color: C.grayText, marginTop: 12, background: C.mist, padding: "11px 14px", borderRadius: 12 } }, "💡 On speaking drills, tap 🎤 Record (Chrome/Edge) or just type what you said, then get AI feedback."),
-        React.createElement("div", { style: { marginTop: 16, display: "flex", flexDirection: "column", gap: 10 } },
-          !done && React.createElement(Button, { onClick: () => setRunning(!running), secondary: running }, running ? "Pause ⏸️" : "Start speaking 🎙️"),
-          (done || left < 90) && React.createElement(Button, { onClick: () => { if (recogRef.current) try { recogRef.current.stop(); } catch {} setListening(false); if (exIdx + 1 < exercises.length) { setExIdx(exIdx + 1); setLeft(90); setRunning(false); setTyped(""); setFeedback(null); setMicError(""); } else { onNext(); } }, secondary: !done }, exIdx + 1 === exercises.length ? "Finish session ✅" : "Next exercise →")
+        isSpeak && !done && React.createElement(Button, { onClick: () => setRunning(!running), secondary: running, style: { marginTop: 12 } }, running ? "Pause ⏸️" : "Start timer 🎙️"),
+        React.createElement("div", { style: { marginTop: 12, display: "flex", gap: 10 } },
+          React.createElement("div", { style: { flex: 1 } }, React.createElement(Button, { onClick: goBack, secondary: true, disabled: exIdx === 0 }, "‹ Back")),
+          React.createElement("div", { style: { flex: 2 } }, React.createElement(Button, { onClick: goNext }, exIdx + 1 === exercises.length ? "Finish ✅" : "Next ›"))
         )
       );
     }
 
-    function SessionDone({ day, onHome }) {
-      return React.createElement("div", { style: { textAlign: "center", paddingTop: 70 } },
-        React.createElement("div", { style: { fontSize: 64 } }, "🏆"),
-        React.createElement(H, { size: 32, style: { marginTop: 12 } }, "Day ", day, " complete"),
-        React.createElement("p", { style: { color: C.grayText, fontSize: 16, marginTop: 10, lineHeight: 1.55 } }, "Saved! ✅ Day ", Math.min(day + 1, 28), " unlocks tomorrow."),
-        React.createElement("div", { style: { marginTop: 20 } }, React.createElement(Waveform, { active: true, color: C.green })),
-        React.createElement("div", { style: { marginTop: 24 } }, React.createElement(Button, { onClick: onHome }, "Back to my plan"))
+    function SessionDone({ day, completed, onHome }) {
+      const nextUp = Math.min(day + 1, 28);
+      return React.createElement("div", { style: { textAlign: "center", paddingTop: 60 } },
+        React.createElement("div", { style: { fontSize: 60 } }, "🏆"),
+        React.createElement(H, { size: 30, style: { marginTop: 10 } }, "Day ", day, " complete!"),
+        React.createElement(KO, null, day, "일차 완료! 잘하셨어요."),
+        React.createElement("p", { style: { color: C.grayText, fontSize: 15, marginTop: 12, lineHeight: 1.55 } }, completed.length, " of 28 days done. Practice Day ", nextUp, " whenever you like — today, tomorrow, or later."),
+        React.createElement("div", { style: { marginTop: 18 } }, React.createElement(Waveform, { active: true, color: C.green })),
+        React.createElement("div", { style: { marginTop: 22 } }, React.createElement(Button, { onClick: onHome }, "Back to my plan"))
       );
     }
 
     function App() {
-      const [screen, setScreen] = useState("boot"), [day, setDay] = useState(1), [completed, setCompleted] = useState([]), [streak, setStreak] = useState(0);
+      const [screen, setScreen] = useState("boot"), [day, setDay] = useState(1);
+      const [completed, setCompleted] = useState([]), [streak, setStreak] = useState(0), [lastDone, setLastDone] = useState(null);
+      const [finishedDay, setFinishedDay] = useState(1);
+
+      useEffect(() => { (async () => {
+        const s = await store.get("sayso-state");
+        if (s && s.value) { try { const st = JSON.parse(s.value); setDay(st.day || 1); setCompleted(st.completed || []); setStreak(st.streak || 0); setLastDone(st.lastDone || null); setScreen("dashboard"); return; } catch {} }
+        setScreen("landing");
+      })(); }, []);
+
+      function persist(st) { store.set("sayso-state", JSON.stringify(st)); }
       const today = new Date().toISOString().slice(0, 10);
-      const [lastDone, setLastDone] = useState(null);
-      const doneToday = lastDone === today;
 
-      useEffect(() => {
-        (async () => {
-          try {
-            const s = await store.get("sayso-state");
-            if (s && s.value) {
-              const state = JSON.parse(s.value);
-              setDay(state.day || 1);
-              setCompleted(state.completed || []);
-              setStreak(state.streak || 0);
-              setLastDone(state.lastDone || null);
-              setScreen("dashboard");
-              return;
-            }
-          } catch {}
-          setScreen("landing");
-        })();
-      }, []);
-
-      async function persist(state) {
-        try { await store.set("sayso-state", JSON.stringify(state)); } catch {}
-      }
-
-      function startDay() {
-        persist({ day: 1, completed: [], streak: 0, lastDone: null });
-        setDay(1);
-        setCompleted([]);
-        setStreak(0);
-        setLastDone(null);
-        setScreen("session");
-      }
+      function startFresh() { const st = { day: 1, completed: [], streak: 0, lastDone: null }; setDay(1); setCompleted([]); setStreak(0); setLastDone(null); persist(st); setScreen("session"); }
 
       function finishSession() {
-        if (!doneToday) {
-          const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-          const newStreak = lastDone === yesterday ? streak + 1 : 1;
-          const nextDay = Math.min(day + 1, 28);
-          const newCompleted = [...completed, day];
-          setCompleted(newCompleted);
-          setStreak(newStreak);
-          setLastDone(today);
-          setDay(nextDay);
-          persist({ day: nextDay, completed: newCompleted, streak: newStreak, lastDone: today });
+        let newStreak = streak, newLast = lastDone;
+        if (lastDone !== today) {
+          const yest = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+          newStreak = (lastDone === yest) ? streak + 1 : 1;
+          newLast = today;
         }
+        const newCompleted = completed.includes(day) ? completed : [...completed, day].sort((a, b) => a - b);
+        const nextDay = Math.min(day + 1, 28);
+        setFinishedDay(day);
+        setCompleted(newCompleted); setStreak(newStreak); setLastDone(newLast);
+        persist({ day: nextDay, completed: newCompleted, streak: newStreak, lastDone: newLast });
         setScreen("done");
+        setDay(nextDay);
       }
 
-      function resetAll() {
-        store.delete("sayso-state");
-        setDay(1);
-        setCompleted([]);
-        setStreak(0);
-        setLastDone(null);
-        setScreen("landing");
-      }
+      function changeDay(dd) { setDay(dd); persist({ day: dd, completed, streak, lastDone }); }
+      function resetAll() { store.delete("sayso-state"); setDay(1); setCompleted([]); setStreak(0); setLastDone(null); setScreen("landing"); }
 
       return React.createElement("div", { style: { minHeight: "100vh", background: `linear-gradient(180deg, ${C.mist} 0%, #FDFCFF 60%)`, fontFamily: "system-ui, sans-serif" } },
-        React.createElement("style", null, `@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&family=Inter:wght@400;600;700&display=swap'); body { margin: 0; } button { font-family: inherit; }`),
-        React.createElement("div", { style: { maxWidth: 480, margin: "0 auto", padding: "12px 20px 40px" } },
+        React.createElement("style", null, `@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&family=Inter:wght@400;600;700&display=swap'); body{margin:0} button{font-family:inherit} *{-webkit-tap-highlight-color:transparent}`),
+        React.createElement("div", { style: { maxWidth: 480, margin: "0 auto", padding: "10px 18px 40px" } },
           screen === "boot" && React.createElement("div", { style: { textAlign: "center", paddingTop: 120 } }, React.createElement(Waveform, { active: true }), React.createElement("p", { style: { color: C.grayText, fontSize: 14, marginTop: 12 } }, "Loading your progress…")),
-          screen === "landing" && React.createElement(Landing, { onStart: startDay }),
-          screen === "dashboard" && React.createElement(Dashboard, { day, completed, streak, doneToday, onTrain: () => setScreen("session"), onReset: resetAll }),
-          screen === "session" && React.createElement(Session, { day, onNext: () => { finishSession(); } }),
-          screen === "done" && React.createElement(SessionDone, { day, onHome: () => setScreen("dashboard") })
+          screen === "landing" && React.createElement(Landing, { onStart: startFresh }),
+          screen === "dashboard" && React.createElement(Dashboard, { day, setDay: changeDay, completed, streak, onTrain: () => setScreen("session"), onReset: resetAll }),
+          screen === "session" && React.createElement(Session, { day, onFinish: finishSession, onExit: () => setScreen("dashboard") }),
+          screen === "done" && React.createElement(SessionDone, { day: finishedDay, completed, onHome: () => setScreen("dashboard") })
         )
       );
     }
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(React.createElement(App));
+
   }
 
-  // Wait for React and ReactDOM to load before starting
   (function waitForReact() {
-    if (typeof React !== "undefined" && typeof ReactDOM !== "undefined") {
-      startApp();
-    } else {
-      var tries = 0;
-      var timer = setInterval(function () {
-        tries++;
-        if (typeof React !== "undefined" && typeof ReactDOM !== "undefined") {
-          clearInterval(timer);
-          startApp();
-        } else if (tries > 100) {
-          clearInterval(timer);
-          document.getElementById("root").innerHTML =
-            '<div style="text-align:center;padding:80px 20px;font-family:system-ui;color:#6B6685">' +
-            '<h2 style="color:#1B1633">Couldn\'t load the app libraries</h2>' +
-            '<p>Your network may be blocking the CDN. Try a different network or refresh.</p></div>';
-        }
-      }, 50);
-    }
+    if (typeof React !== "undefined" && typeof ReactDOM !== "undefined") { startApp(); return; }
+    var tries = 0;
+    var timer = setInterval(function () {
+      tries++;
+      if (typeof React !== "undefined" && typeof ReactDOM !== "undefined") { clearInterval(timer); startApp(); }
+      else if (tries > 100) { clearInterval(timer); document.getElementById("root").innerHTML = '<div style="text-align:center;padding:80px 20px;font-family:system-ui;color:#6B6685"><h2 style="color:#1B1633">Couldn\'t load the app</h2><p>Your network may be blocking the CDN. Try another network or refresh.</p></div>'; }
+    }, 50);
   })();
   </script>
 </body>
-</html>
 </html>
